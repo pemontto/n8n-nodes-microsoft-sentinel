@@ -1,6 +1,6 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-export const incidentOperations: INodeProperties[] = [
+export const alertOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -8,66 +8,66 @@ export const incidentOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: ['incident'],
+				resource: ['alert'],
 			},
 		},
 		options: [
 			// {
 			// 	name: 'Add Tag',
 			// 	value: 'addTag',
-			// 	description: 'Add tag to incident',
-			// 	action: 'Add tag to incident',
+			// 	description: 'Add tag to alert',
+			// 	action: 'Add tag to alert',
 			// },
 			{
 				name: 'Alerts',
 				value: 'alerts',
-				description: 'Get alerts for an incident',
-				action: 'Get alerts for an incident',
+				description: 'Get alerts for an alert',
+				action: 'Get alerts for an alert',
 			},
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create an incident',
-				action: 'Create an incident',
+				description: 'Create an alert',
+				action: 'Create an alert',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Delete an incident',
-				action: 'Delete an incident',
+				description: 'Delete an alert',
+				action: 'Delete an alert',
 			},
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get an incident',
-				action: 'Get an incident',
+				description: 'Get an alert',
+				action: 'Get an alert',
 			},
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get many incidents',
-				action: 'Get many incidents',
+				description: 'Get many alerts',
+				action: 'Get many alerts',
 			},
 			// {
 			// 	name: 'Remove Tag',
 			// 	value: 'removeTag',
-			// 	description: 'Remove tag from incident',
-			// 	action: 'Remove tag from incident',
+			// 	description: 'Remove tag from alert',
+			// 	action: 'Remove tag from alert',
 			// },
 			{
 				name: 'Update',
 				value: 'update',
-				description: 'Update an incident',
-				action: 'Update an incident',
+				description: 'Update an alert',
+				action: 'Update an alert',
 			},
 		],
 		default: 'getAll',
 	},
 ];
 
-export const incidentFields: INodeProperties[] = [
+export const alertFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
-	/*                        incident:create                                     */
+	/*                        alert:create                                     */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Title',
@@ -77,7 +77,7 @@ export const incidentFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['create'],
-				resource: ['incident'],
+				resource: ['alert'],
 			},
 		},
 		default: '',
@@ -91,7 +91,7 @@ export const incidentFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['create'],
-				resource: ['incident'],
+				resource: ['alert'],
 			},
 		},
 		options: [
@@ -123,7 +123,7 @@ export const incidentFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['create'],
-				resource: ['incident'],
+				resource: ['alert'],
 			},
 		},
 		options: [
@@ -145,22 +145,22 @@ export const incidentFields: INodeProperties[] = [
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                        incident:update                                     */
+	/*                        alert:update                                     */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Incident ID',
-		name: 'incidentId',
+		name: 'alertId',
 		required: true,
 		type: 'string',
 		displayOptions: {
 			show: {
 				operation: ['update'],
-				resource: ['incident'],
+				resource: ['alert'],
 			},
 		},
 		default: '',
 		placeholder: '00000000-0000-0000-0000-000000000000',
-		description: 'ID of the incident to update',
+		description: 'ID of the alert to update',
 	},
 	{
 		displayName: 'Update Fields',
@@ -172,7 +172,7 @@ export const incidentFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['update'],
-				resource: ['incident'],
+				resource: ['alert'],
 			},
 		},
 		options: [
@@ -238,7 +238,7 @@ export const incidentFields: INodeProperties[] = [
 					multipleValueButtonText: 'Add Tag',
 				},
 				default: '',
-				description: 'Tags to add to the incident',
+				description: 'Tags to add to the alert',
 			},
 			{
 				displayName: 'Remove Tags',
@@ -249,7 +249,7 @@ export const incidentFields: INodeProperties[] = [
 					multipleValueButtonText: 'Remove Tag',
 				},
 				default: '',
-				description: 'Tags to remove from the incident',
+				description: 'Tags to remove from the alert',
 			},
 			// // Would prefer this with arbitrary text input
 			// {
@@ -257,12 +257,12 @@ export const incidentFields: INodeProperties[] = [
 			// 	name: 'removeTags',
 			// 	type: 'multiOptions',
 			// 	default: [],
-			// 	description: 'Tags to remove from the incident',
+			// 	description: 'Tags to remove from the alert',
 			// },
 		],
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                        incident:create/update                              */
+	/*                        alert:create/update                              */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Options',
@@ -274,7 +274,7 @@ export const incidentFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['create', 'update'],
-				resource: ['incident'],
+				resource: ['alert'],
 			},
 		},
 		options: [
@@ -296,7 +296,7 @@ export const incidentFields: INodeProperties[] = [
 	// 	displayOptions: {
 	// 		show: {
 	// 			operation: ['create'],
-	// 			resource: ['incident'],
+	// 			resource: ['alert'],
 	// 		},
 	// 	},
 	// 	default: {},
@@ -324,17 +324,17 @@ export const incidentFields: INodeProperties[] = [
 	// 				},
 	// 			],
 	// 			default: 'standard',
-	// 			description: 'The type of the incident',
+	// 			description: 'The type of the alert',
 	// 		},
 	// 	],
 	// },
 
 	/* -------------------------------------------------------------------------- */
-	/*                                 incident:delete                            */
+	/*                                 alert:delete                            */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Incident ID',
-		name: 'incidentId',
+		name: 'alertId',
 		required: true,
 		type: 'string',
 		// typeOptions: {
@@ -343,16 +343,16 @@ export const incidentFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['delete'],
-				resource: ['incident'],
+				resource: ['alert'],
 			},
 		},
 		default: '',
 		placeholder: '00000000-0000-0000-0000-000000000000',
-		description: 'ID of the incident to delete',
+		description: 'ID of the alert to delete',
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                 incident:get                               */
+	/*                                 alert:get                               */
 	/* -------------------------------------------------------------------------- */
 	// {
 	// 	displayName: 'Team Name or ID',
@@ -367,14 +367,14 @@ export const incidentFields: INodeProperties[] = [
 	// 	displayOptions: {
 	// 		show: {
 	// 			operation: ['get'],
-	// 			resource: ['incident'],
+	// 			resource: ['alert'],
 	// 		},
 	// 	},
 	// 	default: '',
 	// },
 	{
 		displayName: 'Incident ID',
-		name: 'incidentId',
+		name: 'alertId',
 		required: true,
 		type: 'string',
 		// typeOptions: {
@@ -383,14 +383,14 @@ export const incidentFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['get'],
-				resource: ['incident'],
+				resource: ['alert'],
 			},
 		},
 		default: '',
-		description: 'ID of the incident to retrieve',
+		description: 'ID of the alert to retrieve',
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                 incident:getAll                            */
+	/*                                 alert:getAll                            */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
@@ -399,7 +399,7 @@ export const incidentFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['getAll'],
-				resource: ['incident'],
+				resource: ['alert'],
 			},
 		},
 		default: false,
@@ -412,7 +412,7 @@ export const incidentFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['getAll'],
-				resource: ['incident'],
+				resource: ['alert'],
 				returnAll: [false],
 			},
 		},
@@ -431,7 +431,7 @@ export const incidentFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['getAll'],
-				resource: ['incident'],
+				resource: ['alert'],
 			},
 		},
 		options: [
@@ -516,7 +516,7 @@ export const incidentFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['get', 'getAll'],
-				resource: ['incident'],
+				resource: ['alert'],
 			},
 		},
 		options: [

@@ -19,7 +19,12 @@ import {
 	// microsoftApiRequestAllItemsSkip,
 } from './GenericFunctions';
 
-import { incidentFields, incidentOperations } from './descriptions/IncidentDescription';
+import {
+	// alertFields,
+	// alertOperations,
+	incidentFields,
+	incidentOperations,
+} from './descriptions';
 
 export class MicrosoftSentinel implements INodeType {
 	description: INodeTypeDescription = {
@@ -144,7 +149,10 @@ export class MicrosoftSentinel implements INodeType {
 				const returnData: INodePropertyOptions[] = [];
 				const resourceUrl =
 					'https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2021-03-01';
-				const query = workspaceQuery;
+				const query = `${workspaceQuery}
+					| join ( ResourceContainers | where type =~ 'microsoft.resources/subscriptions'
+					| project subscriptionId, subName = name ) on subscriptionId
+					| sort by (tolower(tostring(subName))) asc`;
 				const { data } = await microsoftApiRequest.call(
 					this,
 					'POST',
@@ -152,15 +160,12 @@ export class MicrosoftSentinel implements INodeType {
 					{
 						query,
 					},
-					{},
+					{ $top: 100 },
 					resourceUrl,
 				);
-				// for object in data get unique values for subscriptionId
-				// const subscriptions = data.map((workspace: IDataObject) => workspace.subscriptionId);
-				// const uniqueSubscriptions = [...new Set(subscriptions)];
 				for (const workspace of data) {
 					returnData.push({
-						name: `${workspace.name} (${workspace.subscriptionId})`,
+						name: `${workspace.subName} (${workspace.subscriptionId})`,
 						value: workspace.subscriptionId as string,
 					});
 				}
@@ -180,7 +185,7 @@ export class MicrosoftSentinel implements INodeType {
 					{
 						query,
 					},
-					{},
+					{ $top: 100 },
 					resourceUrl,
 				);
 				// for object in data get unique values for subscriptionId
@@ -206,7 +211,7 @@ export class MicrosoftSentinel implements INodeType {
 					{
 						query,
 					},
-					{},
+					{ $top: 100 },
 					resourceUrl,
 				);
 				// for object in data get unique values for subscriptionId
@@ -287,9 +292,71 @@ export class MicrosoftSentinel implements INodeType {
 					);
 				}
 				const baseResource = `${subscriptionId}/resourceGroups/${resourceGroupName}/providers/Microsoft.OperationalInsights/workspaces/${workspaceName}`;
+				// https://docs.microsoft.com/en-us/graph/api/resources/security-api-overview?view=graph-rest-1.0
 				if (resource === 'incident') {
-					// https://docs.microsoft.com/en-us/graph/api/resources/security-api-overview?view=graph-rest-1.0
-					if (operation === 'create') {
+					if (['alerts', 'bookmarks', 'entities'].includes(operation)) {
+						const options = this.getNodeParameter('options', 0, {}) as IDataObject;
+						const incidentId = this.getNodeParameter('incidentId', itemIndex) as string;
+						responseData = await microsoftApiRequest.call(
+							this,
+							'POST',
+							`${baseResource}/providers/Microsoft.SecurityInsights/incidents/${incidentId}/${operation}`,
+							{},
+							qs,
+						);
+						responseData = responseData[operation] || responseData.value || [];
+						console.log(`\nresponseData:\n${JSON.stringify(responseData, null, 2)}`);
+
+						if (options.simple) {
+							responseData = responseData.map((x: IDataObject) => ({
+								id: x.name,
+								kind: x.kind,
+								...(x.properties as IDataObject),
+							}));
+						}
+						// if (options.simple) {
+						// 	responseData = responseData.map((x: IDataObject) => ({
+						// 		id: x.name,
+						// 		...(x.properties as IDataObject),
+						// 	}));
+						// }
+					} else if (operation === 'comments') {
+						const options = this.getNodeParameter('options', 0, {}) as IDataObject;
+						const incidentId = this.getNodeParameter('incidentId', itemIndex) as string;
+						const filters = this.getNodeParameter('filters', itemIndex) as IDataObject;
+
+						const queryFilter = [];
+
+						if (filters.createdAfter) {
+							queryFilter.push(`properties/createdTimeUtc ge ${filters.createdAfter}`);
+						}
+						if (filters.modifiedAfter) {
+							queryFilter.push(`properties/lastModifiedTimeUtc ge ${filters.modifiedAfter}`);
+						}
+						if (filters.filter) {
+							queryFilter.push(`(${filters.filter})`);
+						}
+
+						if (queryFilter.length) {
+							console.debug(`queryFilter: ${queryFilter}`);
+							qs.$filter = queryFilter.join(' and ');
+						}
+
+						responseData = await microsoftApiRequestAllItems.call(
+							this,
+							'value',
+							'GET',
+							`${baseResource}/providers/Microsoft.SecurityInsights/incidents/${incidentId}/comments`,
+							{},
+							qs,
+						);
+						if (options.simple) {
+							responseData = responseData.map((x: IDataObject) => ({
+								id: x.name,
+								...(x.properties as IDataObject),
+							}));
+						}
+					} else if (operation === 'create') {
 						const options = this.getNodeParameter('options', 0) as IDataObject;
 						// Generate UUIDv4 for incident ID
 						const incidentId = uuid();
@@ -314,6 +381,9 @@ export class MicrosoftSentinel implements INodeType {
 							qs,
 						);
 						if (options.simple) {
+							responseData.properties.labels = responseData.properties.labels.map(
+								(x: IDataObject) => x.labelName,
+							);
 							responseData = { id: responseData.name, ...responseData.properties };
 						}
 					} else if (operation === 'update') {
@@ -421,7 +491,29 @@ export class MicrosoftSentinel implements INodeType {
 							{},
 							qs,
 						);
+
+						for (const resource of ['alerts', 'bookmarks', 'entities']) {
+							if (options[resource]) {
+								let resourceData = await microsoftApiRequest.call(
+									this,
+									'POST',
+									`${baseResource}/providers/Microsoft.SecurityInsights/incidents/${responseData.name}/${resource}`,
+									{},
+									qs,
+								);
+								resourceData = resourceData[operation] || resourceData.value;
+								responseData[resource] = resourceData.map((x: IDataObject) => ({
+									id: x.name,
+									kind: x.kind,
+									...(x.properties as IDataObject),
+								}));
+							}
+						}
+
 						if (options.simple) {
+							responseData.properties.labels = responseData.properties.labels.map(
+								(x: IDataObject) => x.labelName,
+							);
 							responseData = { id: responseData.name, ...responseData.properties };
 						}
 					}
@@ -468,10 +560,40 @@ export class MicrosoftSentinel implements INodeType {
 
 						// console.log(`\nresponseData:\n${JSON.stringify(responseData, null, 2)}`);
 						if (options.simple) {
-							responseData = responseData.map((x: IDataObject) => ({
-								id: x.name,
-								...(x.properties as IDataObject),
-							}));
+							responseData = responseData.map((x: IDataObject) => {
+								// @ts-ignore
+								x.properties.labels = x.properties?.labels.map((x: IDataObject) => x.labelName);
+								return {
+									id: x.name,
+									...(x.properties as IDataObject),
+								};
+							});
+						}
+
+						// Enrich
+						for (const response of responseData) {
+							const incidentId = response.name || response.id;
+							console.log(`incidentId: ${incidentId}`);
+							for (const resource of ['alerts', 'bookmarks', 'entities']) {
+								if (options[resource]) {
+									console.log('GRABBIING RESOURCE: ', resource);
+									let resourceData = await microsoftApiRequest.call(
+										this,
+										'POST',
+										`${baseResource}/providers/Microsoft.SecurityInsights/incidents/${incidentId}/${resource}`,
+										{},
+										qs,
+									);
+									resourceData = resourceData[resource] || resourceData.value || [];
+									// console.log(JSON.stringify(resourceData, null, 2));
+									// console.log(JSON.stringify(response, null, 2));
+									response[resource] = resourceData.map((x: IDataObject) => ({
+										id: x.name,
+										kind: x.kind,
+										...(x.properties as IDataObject),
+									}));
+								}
+							}
 						}
 						// console.log(`\nFINAL responseData:\n${JSON.stringify(responseData, null, 2)}`);
 					}

@@ -12,17 +12,23 @@ export const incidentOperations: INodeProperties[] = [
 			},
 		},
 		options: [
-			// {
-			// 	name: 'Add Tag',
-			// 	value: 'addTag',
-			// 	description: 'Add tag to incident',
-			// 	action: 'Add tag to incident',
-			// },
 			{
 				name: 'Alerts',
 				value: 'alerts',
 				description: 'Get alerts for an incident',
 				action: 'Get alerts for an incident',
+			},
+			{
+				name: 'Bookmarks',
+				value: 'bookmarks',
+				description: 'Get bookmarks for an incident',
+				action: 'Get bookmarks for an incident',
+			},
+			{
+				name: 'Comments',
+				value: 'comments',
+				description: 'Get comments for an incident',
+				action: 'Get comments for an incident',
 			},
 			{
 				name: 'Create',
@@ -37,6 +43,12 @@ export const incidentOperations: INodeProperties[] = [
 				action: 'Delete an incident',
 			},
 			{
+				name: 'Entities',
+				value: 'entities',
+				description: 'Get entities for an incident',
+				action: 'Get entites for an incident',
+			},
+			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get an incident',
@@ -48,12 +60,6 @@ export const incidentOperations: INodeProperties[] = [
 				description: 'Get many incidents',
 				action: 'Get many incidents',
 			},
-			// {
-			// 	name: 'Remove Tag',
-			// 	value: 'removeTag',
-			// 	description: 'Remove tag from incident',
-			// 	action: 'Remove tag from incident',
-			// },
 			{
 				name: 'Update',
 				value: 'update',
@@ -66,6 +72,27 @@ export const incidentOperations: INodeProperties[] = [
 ];
 
 export const incidentFields: INodeProperties[] = [
+	/* -------------------------------------------------------------------------- */
+	/*                        incident:delete,alerts,entities                     */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Incident ID',
+		name: 'incidentId',
+		required: true,
+		type: 'string',
+		// typeOptions: {
+		// 	loadOptionsMethod: 'getIncidents',
+		// },
+		displayOptions: {
+			show: {
+				operation: ['alerts', 'bookmarks', 'comments', 'entities', 'delete'],
+				resource: ['incident'],
+			},
+		},
+		default: '',
+		placeholder: '00000000-0000-0000-0000-000000000000',
+		description: 'ID of the incident',
+	},
 	/* -------------------------------------------------------------------------- */
 	/*                        incident:create                                     */
 	/* -------------------------------------------------------------------------- */
@@ -273,7 +300,7 @@ export const incidentFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: ['create', 'update'],
+				operation: ['alerts', 'bookmarks', 'comments', 'create', 'entities', 'update'],
 				resource: ['incident'],
 			},
 		},
@@ -332,24 +359,24 @@ export const incidentFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                 incident:delete                            */
 	/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Incident ID',
-		name: 'incidentId',
-		required: true,
-		type: 'string',
-		// typeOptions: {
-		// 	loadOptionsMethod: 'getIncidents',
-		// },
-		displayOptions: {
-			show: {
-				operation: ['delete'],
-				resource: ['incident'],
-			},
-		},
-		default: '',
-		placeholder: '00000000-0000-0000-0000-000000000000',
-		description: 'ID of the incident to delete',
-	},
+	// {
+	// 	displayName: 'Incident ID',
+	// 	name: 'incidentId',
+	// 	required: true,
+	// 	type: 'string',
+	// 	// typeOptions: {
+	// 	// 	loadOptionsMethod: 'getIncidents',
+	// 	// },
+	// 	displayOptions: {
+	// 		show: {
+	// 			operation: ['delete'],
+	// 			resource: ['incident'],
+	// 		},
+	// 	},
+	// 	default: '',
+	// 	placeholder: '00000000-0000-0000-0000-000000000000',
+	// 	description: 'ID of the incident to delete',
+	// },
 
 	/* -------------------------------------------------------------------------- */
 	/*                                 incident:get                               */
@@ -430,7 +457,7 @@ export const incidentFields: INodeProperties[] = [
 		placeholder: 'Add Filter',
 		displayOptions: {
 			show: {
-				operation: ['getAll'],
+				operation: ['comments', 'getAll'],
 				resource: ['incident'],
 			},
 		},
@@ -453,6 +480,11 @@ export const incidentFields: INodeProperties[] = [
 				displayName: 'Severity',
 				name: 'severity',
 				type: 'multiOptions',
+				displayOptions: {
+					show: {
+						'/operation': ['getAll'],
+					},
+				},
 				options: [
 					{
 						name: 'Informational',
@@ -478,6 +510,11 @@ export const incidentFields: INodeProperties[] = [
 				displayName: 'Status',
 				name: 'status',
 				type: 'multiOptions',
+				displayOptions: {
+					show: {
+						'/operation': ['getAll'],
+					},
+				},
 				options: [
 					{
 						name: 'Active',
@@ -528,6 +565,34 @@ export const incidentFields: INodeProperties[] = [
 				default: true,
 				description:
 					'Whether to return a simplified version of the response instead of the raw data',
+			},
+			{
+				displayName: 'Get Alerts',
+				name: 'alerts',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to return alerts associated with the incident',
+			},
+			{
+				displayName: 'Get Bookmarks',
+				name: 'bookmarks',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to return bookmarks associated with the incident',
+			},
+			{
+				displayName: 'Get Comments',
+				name: 'comments',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to return comments associated with the incident',
+			},
+			{
+				displayName: 'Get Entities',
+				name: 'entities',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to return entities associated with the incident',
 			},
 			{
 				displayName: 'Number of Images',
