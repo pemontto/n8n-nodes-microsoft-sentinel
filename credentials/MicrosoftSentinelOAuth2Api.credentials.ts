@@ -7,7 +7,7 @@ export class MicrosoftSentinelOAuth2Api implements ICredentialType {
 
 	extends = ['microsoftOAuth2Api'];
 
-	documentationUrl = 'https://learn.microsoft.com/en-gb/rest/api/securityinsights';
+	documentationUrl = 'https://learn.microsoft.com/rest/api/securityinsights';
 
 	properties: INodeProperties[] = [
 		{
@@ -29,7 +29,7 @@ export class MicrosoftSentinelOAuth2Api implements ICredentialType {
 		{
 			displayName: 'Tenant ID',
 			name: 'tenantId',
-			description: 'The ID of the tenant this client credential belongs to',
+			description: 'The ID or domain of the tenant this client credential belongs to',
 			// type: 'hidden',
 			type: 'string',
 			default: '',
@@ -58,31 +58,9 @@ export class MicrosoftSentinelOAuth2Api implements ICredentialType {
 			displayName: 'Scope',
 			name: 'scope',
 			type: 'hidden',
-			default: 'https://management.azure.com/.default offline_access',
-		},
-		{
-			displayName: 'Default Subscription ID',
-			name: 'subscriptionId',
-			type: 'string',
-			default: '',
-			placeholder: '00000000-0000-0000-0000-000000000000',
-			description: 'Subscription ID where the default Sentinel workspace is located',
-		},
-		{
-			displayName: 'Default Resource Group Name',
-			name: 'resourceGroupName',
-			type: 'string',
-			default: '',
-			placeholder: 'sentinel-rg',
-			description: 'Resource group name where the default Sentinel workspace is located',
-		},
-		{
-			displayName: 'Default Workspace Name',
-			name: 'workspaceName',
-			type: 'string',
-			default: '',
-			placeholder: 'sentinel',
-			description: 'Default Sentinel workspace name',
+			// type: 'string',
+			default:
+				'=openid offline_access {{ $self["grantType"] === "clientCredentials" ? "https://management.azure.com/.default" : "https://management.azure.com/user_impersonation" }}',
 		},
 	];
 }
