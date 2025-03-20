@@ -62,5 +62,11 @@ export class MicrosoftSentinelOAuth2Api implements ICredentialType {
 			default:
 				'=openid offline_access {{ $self["grantType"] === "clientCredentials" ? "https://management.azure.com/.default" : "https://management.azure.com/user_impersonation" }}',
 		},
+		{
+			displayName: 'Authentication',
+			name: 'authentication',
+			type: 'hidden',
+			default: 'body',
+		},
 	];
 }
