@@ -222,6 +222,7 @@ export async function prepareOutput(this: IExecuteSingleFunctions, items: INodeE
 				id: item.json.name,
 				kind: item.json.kind,
 				...(item.json.properties as JsonObject),
+				etag: item.json.etag,
 			};
 		}
 		return item;
