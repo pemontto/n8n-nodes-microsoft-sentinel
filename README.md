@@ -1,4 +1,4 @@
-# n8n-nodes-atlassian-document
+# n8n-nodes-microsoft-sentinel
 
 This is an n8n community node. It lets you interact with Microsoft Sentinel workspaces and resources.
 
