@@ -78,7 +78,7 @@ export class MicrosoftSentinel implements INodeType {
 									{
 										type: 'setKeyValue',
 										properties: {
-											name: '={{ $responseItem.name }} ({{ $responseItem.subscriptionName }} -> {{ $responseItem.resourceGroup }})',
+											name: '={{ $responseItem.name }} ({{ $responseItem.subscriptionName }} > {{ $responseItem.resourceGroup }})',
 											value:
 												'={{ $responseItem.subscriptionId }}/{{ $responseItem.resourceGroup }}/{{ $responseItem.name }}',
 											// '=/subscriptions/{{ $responseItem.subscriptionId }}/resourceGroups/{{ $responseItem.resourceGroup }}/providers/Microsoft.OperationalInsights/workspaces/{{ $responseItem.name }}/providers/Microsoft.SecurityInsights',

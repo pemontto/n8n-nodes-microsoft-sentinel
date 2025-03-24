@@ -1,6 +1,6 @@
 {
 	"name": "n8n-nodes-microsoft-sentinel",
-	"version": "0.1.3",
+	"version": "0.1.4",
 	"description": "n8n node for interacting with Microsoft Sentinel",
 	"keywords": [
 		"n8n-community-node-package"

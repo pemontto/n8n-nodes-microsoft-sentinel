@@ -5,6 +5,7 @@ This is an n8n community node. It lets you interact with Microsoft Sentinel work
 [n8n](https://n8n.io/) is a [fair-code licensed](https://docs.n8n.io/reference/license/) workflow automation platform.
 
 [Installation](#installation)
+[Example Workflow](#example-workflow)
 [Operations](#operations)
 [Compatibility](#compatibility)
 [Resources](#resources)
@@ -12,6 +13,115 @@ This is an n8n community node. It lets you interact with Microsoft Sentinel work
 ## Installation
 
 Follow the [installation guide](https://docs.n8n.io/integrations/community-nodes/installation/) in the n8n community nodes documentation.
+
+## Example Workflow
+
+This workflow will get all available Sentinel instances and retrieve all `Active` and `New` High severity incidents.
+![alt text](images/workflow.png)
+<details>
+<summary>Node settings</summary>
+
+![alt text](images/node-settings.png)
+</details>
+<details>
+<summary>Workflow JSON</summary>
+
+_Copy and paste the following workflow JSON into your n8n editor to recreate the workflow:_
+```json
+{
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -500,
+        -40
+      ],
+      "id": "3e2bb6a5-abd3-4b5e-bb8a-9d1d10595d1c",
+      "name": "When clicking ‘Test workflow’"
+    },
+    {
+      "parameters": {
+        "resource": "instance",
+        "requestOptions": {}
+      },
+      "type": "n8n-nodes-microsoft-sentinel.microsoftSentinel",
+      "typeVersion": 1,
+      "position": [
+        -280,
+        -40
+      ],
+      "id": "449fe0b6-5e4f-43be-bfec-777bb8693cab",
+      "name": "Get Sentinel Instances",
+      "credentials": {
+        "microsoftSentinelOAuth2Api": {
+          "id": "1",
+          "name": "Your Sentinel Creds"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sentinelInstance": "={{ $json.sentinelInstance }}",
+        "options": {
+          "orderBy": "properties/lastModifiedTimeUtc",
+          "sort": "desc"
+        },
+        "filters": {
+          "severity": [
+            "High"
+          ],
+          "status": [
+            "Active",
+            "New"
+          ]
+        },
+        "requestOptions": {}
+      },
+      "type": "n8n-nodes-microsoft-sentinel.microsoftSentinel",
+      "typeVersion": 1,
+      "position": [
+        -60,
+        -40
+      ],
+      "id": "63353297-1aa9-468f-8357-717aa0ac009b",
+      "name": "Get All High Open Incidents",
+      "credentials": {
+        "microsoftSentinelOAuth2Api": {
+          "id": "1",
+          "name": "Your Sentinel Creds"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "When clicking ‘Test workflow’": {
+      "main": [
+        [
+          {
+            "node": "Get Sentinel Instances",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Sentinel Instances": {
+      "main": [
+        [
+          {
+            "node": "Get All High Open Incidents",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
+```
+</details>
 
 ## Operations
 
