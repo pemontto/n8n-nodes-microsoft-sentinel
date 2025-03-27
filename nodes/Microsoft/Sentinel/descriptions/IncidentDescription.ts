@@ -413,6 +413,13 @@ const getAllFields: INodeProperties[] = [
 				description: 'Filter incidents matching the given status or statuses',
 			},
 			{
+				displayName: 'Title',
+				name: 'title',
+				type: 'string',
+				default: '',
+				description: 'Filter incidents where title contains the given string (case-insensitive)',
+			},
+			{
 				displayName: 'Filter Query Parameter',
 				name: 'filter',
 				description:

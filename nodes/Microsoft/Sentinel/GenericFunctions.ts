@@ -31,6 +31,9 @@ export async function buildFilterString(
 	if (filters.incidentId) {
 		queryFilter.push(`properties/incidentNumber eq ${filters.incidentId as string}`);
 	}
+	if (filters.title) {
+		queryFilter.push(`contains(toLower(properties/title), '${(filters.title as string).replace(/'/g, '%27')}')`);
+	}
 	// @ts-ignore
 	if (filters.severity?.length) {
 		// If filters.severity is a string, split it on commas
