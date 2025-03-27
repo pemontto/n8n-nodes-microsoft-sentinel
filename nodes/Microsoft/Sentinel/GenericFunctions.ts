@@ -209,10 +209,11 @@ export async function processQueryResults(
 	return items;
 }
 
-export async function prepareOutput(this: IExecuteSingleFunctions, items: INodeExecutionData[]) {
+export async function prepareOutput(this: IExecuteSingleFunctions, items: INodeExecutionData[], response: IN8nHttpFullResponse): Promise<INodeExecutionData[]> {
 	// console.log('item:', items);
 	const nodeDebug = this.getNodeParameter('nodeDebug', 0) as boolean;
 	const simple = this.getNodeParameter('options.simple', true) as boolean;
+	const splitResults = this.getNodeParameter('options.splitResults', true) as boolean;
 
 	if (nodeDebug) {
 		this.logger.info(
@@ -235,7 +236,24 @@ export async function prepareOutput(this: IExecuteSingleFunctions, items: INodeE
 		return item;
 	});
 
-	return items;
+	// If splitResults is true, return each item as a separate item
+	if (splitResults) {
+		return items;
+	} else {
+		let outKey = (this.getNodeParameter('operation', 'results') as string).toLowerCase();
+		// Remove prepended 'get' from outKey
+		if (outKey.startsWith('get')) {
+			outKey = outKey.slice(3);
+		}
+		return [
+			{
+				json: {
+					[outKey]: items.map((item) => item.json)
+				},
+				pairedItem: this.getItemIndex()
+			}
+		];
+	}
 }
 
 // https://learn.microsoft.com/en-us/rest/api/azureresourcegraph/resourcegraph/resources/resources?view=rest-azureresourcegraph-resourcegraph

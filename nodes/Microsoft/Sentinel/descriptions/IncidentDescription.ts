@@ -85,8 +85,6 @@ export const incidentOperations: INodeProperties[] = [
 								items: INodeExecutionData[],
 								response: IN8nHttpFullResponse,
 							) {
-								// @ts-ignore
-								console.log('items', items);
 								for (const item of items) {
 									item.json = { _status: response.statusCode === 200 ? 'Deleted' : 'Not Found' };
 								}
@@ -187,6 +185,40 @@ export const incidentOperations: INodeProperties[] = [
 							},
 							prepareOutput,
 						],
+					},
+				},
+			},
+			// TODO: Pagination is not working here for some reason. The nextLink exists but it's not getting called again
+			{
+				name: 'Get Comments',
+				value: 'getComments',
+				action: 'Gets all comments for an incident',
+				routing: {
+					request: {
+						method: 'GET',
+						url: '=/incidents/{{ $parameter.incidentId }}/comments',
+					},
+					output: {
+						postReceive: [
+							{
+								type: 'rootProperty',
+								properties: {
+									property: 'value',
+								},
+							},
+							prepareOutput,
+						],
+					},
+					operations: {
+						pagination: {
+							type: 'generic',
+							properties: {
+								continue: '={{ $response.body?.nextLink }}',
+								request: {
+									url: '={{ $response.body.nextLink }}',
+								},
+							},
+						},
 					},
 				},
 			},
@@ -440,7 +472,7 @@ const getIncidentFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['incident'],
-				operation: ['get', 'getAlerts', 'getEntities'],
+				operation: ['get', 'getAlerts', 'getEntities', 'getComments'],
 			},
 		},
 		required: true,
@@ -456,7 +488,7 @@ const getIncidentFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['incident'],
-				operation: ['get', 'getAlerts', 'getEntities'],
+				operation: ['get', 'getAlerts', 'getEntities', 'getComments'],
 			},
 		},
 		default: {},
@@ -469,6 +501,19 @@ const getIncidentFields: INodeProperties[] = [
 				description:
 					'Whether to return a simplified version of the response instead of the raw data',
 			},
+			// Add options for getAlerts and getEntities to split the results
+			{
+				displayName: 'Split Results',
+				name: 'splitResults',
+				type: 'boolean',
+				default: false,
+				displayOptions: {
+					show: {
+						'/operation': ['getAlerts', 'getEntities', 'getComments'],
+					},
+				},
+				description: 'Whether to split the results into individual items',
+			}
 		],
 	},
 ];
