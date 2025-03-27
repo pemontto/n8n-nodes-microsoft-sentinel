@@ -33,6 +33,10 @@ export async function buildFilterString(
 	}
 	// @ts-ignore
 	if (filters.severity?.length) {
+		// If filters.severity is a string, split it on commas
+		if (typeof filters.severity === 'string') {
+			filters.severity = filters.severity.split(/, */);
+		}
 		queryFilter.push(_addFilter('properties/severity', 'eq', filters.severity as string[]));
 	}
 	// @ts-ignore
