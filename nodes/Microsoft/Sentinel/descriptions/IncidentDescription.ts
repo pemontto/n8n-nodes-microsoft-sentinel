@@ -193,40 +193,6 @@ export const incidentOperations: INodeProperties[] = [
 				},
 			},
 			{
-				name: 'Get Comments',
-				value: 'getComments',
-				action: 'Gets all comments for an incident',
-				routing: {
-					request: {
-						method: 'GET',
-						url: '=/incidents/{{ $parameter.incidentId }}/comments',
-						qs: { '$top': 1000 },
-					},
-					output: {
-						postReceive: [
-							{
-								type: 'rootProperty',
-								properties: {
-									property: 'value',
-								},
-							},
-							prepareOutput,
-						],
-					},
-					// operations: {
-					// 	pagination: {
-					// 		type: 'generic',
-					// 		properties: {
-					// 			continue: '={{ $response.body.values.length > 0 }}',
-					// 			request: {
-					// 				url: '={{ $response.body.nextLink }}',
-					// 			},
-					// 		},
-					// 	},
-					// },
-				},
-			},
-			{
 				name: 'Create or Update Comment',
 				value: 'upsertComment',
 				action: 'Create or update a comment on an incident',
@@ -278,6 +244,54 @@ export const incidentOperations: INodeProperties[] = [
 							},
 						],
 					},
+				},
+			},
+			{
+				name: 'Get Comment',
+				value: 'getComment',
+				action: 'Gets a comment on an incident',
+				routing: {
+					request: {
+						method: 'GET',
+						url: '=/incidents/{{ $parameter.incidentId }}/comments/{{ $parameter.commentId }}',
+					},
+					output: {
+						postReceive: [prepareOutput],
+					},
+				},
+			},
+			{
+				name: 'Get Many Comments',
+				value: 'getComments',
+				action: 'Gets all comments for an incident',
+				routing: {
+					request: {
+						method: 'GET',
+						url: '=/incidents/{{ $parameter.incidentId }}/comments',
+						qs: { '$top': 1000 },
+					},
+					output: {
+						postReceive: [
+							{
+								type: 'rootProperty',
+								properties: {
+									property: 'value',
+								},
+							},
+							prepareOutput,
+						],
+					},
+					// operations: {
+					// 	pagination: {
+					// 		type: 'generic',
+					// 		properties: {
+					// 			continue: '={{ $response.body.values.length > 0 }}',
+					// 			request: {
+					// 				url: '={{ $response.body.nextLink }}',
+					// 			},
+					// 		},
+					// 	},
+					// },
 				},
 			},
 		],
@@ -537,6 +551,21 @@ const getIncidentFields: INodeProperties[] = [
 		default: '',
 		placeholder: '00000000-0000-0000-0000-000000000000',
 		description: 'The UUID of the incident',
+	},
+	{
+		displayName: 'Comment ID',
+		name: 'commentId',
+		type: 'string',
+		displayOptions: {
+			show: {
+				resource: ['incident'],
+				operation: ['getComment'],
+			},
+		},
+		required: true,
+		default: '',
+		placeholder: '00000000-0000-0000-0000-000000000000',
+		description: 'The UUID of the comment',
 	},
 	{
 		displayName: 'Options',
