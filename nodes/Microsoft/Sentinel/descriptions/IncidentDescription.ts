@@ -4,6 +4,9 @@
 // Get Alerts: /incidents/{incidentId}/alerts
 // Get Entities: /incidents/{incidentId}/entities
 // Get Relations: /incidents/{incidentId}/relations (paged)
+// Get Comments: /incidents/{incidentId}/bookmarks
+// Create/Update Comment: /incidents/{incidentId}/bookmarks
+
 
 // TODO later
 // Get Tasks: /incidents/{incidentId}/tasks
@@ -25,6 +28,7 @@ import {
 	buildFilterString,
 	// mergeProperties,
 	prepareOutput,
+	upsertComment,
 	upsertIncident,
 } from '../GenericFunctions';
 
@@ -188,15 +192,83 @@ export const incidentOperations: INodeProperties[] = [
 					},
 				},
 			},
-			// TODO: Pagination is not working here for some reason. The nextLink exists but it's not getting called again
 			{
-				name: 'Get Comments',
+				name: 'Create or Update Comment',
+				value: 'upsertComment',
+				action: 'Create or update a comment on an incident',
+				routing: {
+					request: {
+						method: 'PUT',
+						url: '=/incidents/{{ $parameter.incidentId }}/comments',
+					},
+					send: {
+						preSend: [upsertComment],
+					},
+					output: {
+						postReceive: [
+							prepareOutput,
+							async function (
+								this: IExecuteSingleFunctions,
+								items: INodeExecutionData[],
+								response: IN8nHttpFullResponse,
+							) {
+								for (const item of items) {
+									item.json._status = response.statusCode === 201 ? 'Created' : 'Updated';
+								}
+								return items;
+							},
+						],
+					},
+				},
+			},
+			{
+				name: 'Delete Comment',
+				value: 'deleteComment',
+				action: 'Delete a comment on an incident',
+				routing: {
+					request: {
+						method: 'DELETE',
+						url: '=/incidents/{{ $parameter.incidentId }}/comments/{{ $parameter.commentId }}',
+					},
+					output: {
+						postReceive: [
+							async function (
+								this: IExecuteSingleFunctions,
+								items: INodeExecutionData[],
+								response: IN8nHttpFullResponse,
+							) {
+								for (const item of items) {
+									item.json = { _status: response.statusCode === 200 ? 'Deleted' : 'Not Found' };
+								}
+								return items;
+							},
+						],
+					},
+				},
+			},
+			{
+				name: 'Get Comment',
+				value: 'getComment',
+				action: 'Gets a comment on an incident',
+				routing: {
+					request: {
+						method: 'GET',
+						url: '=/incidents/{{ $parameter.incidentId }}/comments/{{ $parameter.commentId }}',
+					},
+					output: {
+						postReceive: [prepareOutput],
+					},
+				},
+			},
+			{
+				name: 'Get Many Comments',
 				value: 'getComments',
 				action: 'Gets all comments for an incident',
 				routing: {
 					request: {
 						method: 'GET',
 						url: '=/incidents/{{ $parameter.incidentId }}/comments',
+						qs: { '$top': 1000 },
 					},
 					output: {
 						postReceive: [
@@ -209,17 +281,17 @@ export const incidentOperations: INodeProperties[] = [
 							prepareOutput,
 						],
 					},
-					operations: {
-						pagination: {
-							type: 'generic',
-							properties: {
-								continue: '={{ $response.body?.nextLink }}',
-								request: {
-									url: '={{ $response.body.nextLink }}',
-								},
-							},
-						},
-					},
+					// operations: {
+					// 	pagination: {
+					// 		type: 'generic',
+					// 		properties: {
+					// 			continue: '={{ $response.body.values.length > 0 }}',
+					// 			request: {
+					// 				url: '={{ $response.body.nextLink }}',
+					// 			},
+					// 		},
+					// 	},
+					// },
 				},
 			},
 		],
@@ -472,13 +544,28 @@ const getIncidentFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['incident'],
-				operation: ['get', 'getAlerts', 'getEntities', 'getComments'],
+				operation: ['get', 'getAlerts', 'getEntities', 'getComments', 'getComment'],
 			},
 		},
 		required: true,
 		default: '',
 		placeholder: '00000000-0000-0000-0000-000000000000',
 		description: 'The UUID of the incident',
+	},
+	{
+		displayName: 'Comment ID',
+		name: 'commentId',
+		type: 'string',
+		displayOptions: {
+			show: {
+				resource: ['incident'],
+				operation: ['getComment'],
+			},
+		},
+		required: true,
+		default: '',
+		placeholder: '00000000-0000-0000-0000-000000000000',
+		description: 'The UUID of the comment',
 	},
 	{
 		displayName: 'Options',
@@ -488,7 +575,7 @@ const getIncidentFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['incident'],
-				operation: ['get', 'getAlerts', 'getEntities', 'getComments'],
+				operation: ['get', 'getAlerts', 'getEntities', 'getComments', 'getComment'],
 			},
 		},
 		default: {},
@@ -526,13 +613,28 @@ const deleteIncidentFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['incident'],
-				operation: ['delete'],
+				operation: ['delete', 'deleteComment'],
 			},
 		},
 		required: true,
 		default: '',
 		placeholder: '00000000-0000-0000-0000-000000000000',
 		description: 'The UUID of the incident',
+	},
+	{
+		displayName: 'Comment ID',
+		name: 'commentId',
+		type: 'string',
+		displayOptions: {
+			show: {
+				resource: ['incident'],
+				operation: ['deleteComment'],
+			},
+		},
+		required: true,
+		default: '',
+		placeholder: '00000000-0000-0000-0000-000000000000',
+		description: 'The UUID of the comment',
 	},
 ];
 
@@ -672,9 +774,82 @@ const upsertIncidentFields: INodeProperties[] = [
 	},
 ];
 
+
+const upsertCommentFields: INodeProperties[] = [
+	{
+		displayName: 'Incident ID',
+		name: 'incidentId',
+		type: 'string',
+		displayOptions: {
+			show: {
+				resource: ['incident'],
+				operation: ['upsertComment'],
+			},
+		},
+		required: true,
+		default: '',
+		placeholder: '00000000-0000-0000-0000-000000000000',
+		description: 'The UUID of the incident',
+	},
+	{
+		displayName: 'Message',
+		name: 'message',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: ['incident'],
+				operation: ['upsertComment'],
+			},
+		},
+		description: 'The comment message',
+		required: true,
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		displayOptions: {
+			show: {
+				resource: ['incident'],
+				operation: ['upsertComment'],
+			},
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'Comment ID',
+				name: 'objectId',
+				type: 'string',
+				default: '',
+				placeholder: '00000000-0000-0000-0000-000000000000',
+				description: 'The UUID of the incident',
+			},
+			{
+				displayName: 'Etag',
+				name: 'etag',
+				type: 'string',
+				default: '',
+				description: 'Etag of the azure alert rule',
+			},
+			{
+				displayName: 'Simplify',
+				name: 'simple',
+				type: 'boolean',
+				default: true,
+				description:
+					'Whether to return a simplified version of the response instead of the raw data',
+			},
+		],
+	},
+]
+
+
 export const incidentFields: INodeProperties[] = [
 	...getIncidentFields,
 	...getAllFields,
 	...deleteIncidentFields,
 	...upsertIncidentFields,
+	...upsertCommentFields,
 ];

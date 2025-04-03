@@ -123,31 +123,39 @@ _Copy and paste the following workflow JSON into your n8n editor to recreate the
 ```
 </details>
 
-## Operations
+## **Operations**
 
-- Instance
-    - Get instances: retreives a list of Sentinel workspaces available to your account
-- Alert Rule
-    - Create or Update: creates a new alert rule if it does not exist, or updates an existing alert rule
-    - Delete: deletes an alert rule
-    - Get: retrieves an alert rule
-    - Get Many: retrieves multiple alert rules
-    - Get Template: retrieves a template for creating an alert rule
-    - Get Many Templates: retrieves multiple templates for creating alert rules
-- Automation Rule
-    - Create or Update: creates a new automation rule if it does not exist, or updates an existing automation rule
-    - Delete: deletes an automation rule
-    - Get: retrieves an automation rule
-    - Get Many: retrieves multiple automation rules
-- Incident
-    - Create or Update: creates a new incident if it does not exist, or updates an existing incident
-    - Delete: deletes an incident
-    - Get: retrieves an incident
-    - Get Many: retrieves multiple incidents
-    - Get Alerts: retrieves alerts associated with an incident
-    - Get Entities: retrieves entities associated with an incident
-- Query
-    - Run Query: runs a Kusto (KQL) query against a Sentinel workspace
+**Instance:**
+- **Get instances:** Retrieves a list of Sentinel workspaces available to your account
+
+**Alert Rule:**
+- **Create or Update:** Creates a new alert rule if it does not exist, or updates an existing alert rule
+- **Delete:** Deletes an alert rule
+- **Get:** Retrieves an alert rule
+- **Get Many:** Retrieves multiple alert rules
+- **Get Template:** Retrieves a template for creating an alert rule
+- **Get Many Templates:** Retrieves multiple templates for creating alert rules
+
+**Automation Rule:**
+- **Create or Update:** Creates a new automation rule if it does not exist, or updates an existing automation rule
+- **Delete:** Deletes an automation rule
+- **Get:** Retrieves an automation rule
+- **Get Many:** Retrieves multiple automation rules
+
+**Incident:**
+- **Create or Update:** Creates a new incident if it does not exist, or updates an existing incident
+- **Delete:** Deletes an incident
+- **Get:** Retrieves an incident
+- **Get Many:** Retrieves multiple incidents
+- **Get Alerts:** Retrieves alerts associated with an incident
+- **Get Entities:** Retrieves entities associated with an incident
+- **Create or Update Comment:** Creates a new comment if it does not exist, or updates an existing comment
+- **Delete Comment:** Deletes a comment associated with an incident
+- **Get Comment:** Retrieves a comment associated with an incident
+- **Get Many Comments:** Retrieves comments associated with an incident
+
+**Query:**
+- **Run Query:** Runs a Kusto (KQL) query against a Sentinel workspace
 
 ## Compatibility
 
