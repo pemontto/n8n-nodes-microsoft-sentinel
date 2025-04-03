@@ -255,6 +255,31 @@ export const incidentOperations: INodeProperties[] = [
 					},
 				},
 			},
+			{
+				name: 'Delete Comment',
+				value: 'deleteComment',
+				action: 'Delete a comment on an incident',
+				routing: {
+					request: {
+						method: 'DELETE',
+						url: '=/incidents/{{ $parameter.incidentId }}/comments/{{ $parameter.commentId }}',
+					},
+					output: {
+						postReceive: [
+							async function (
+								this: IExecuteSingleFunctions,
+								items: INodeExecutionData[],
+								response: IN8nHttpFullResponse,
+							) {
+								for (const item of items) {
+									item.json = { _status: response.statusCode === 200 ? 'Deleted' : 'Not Found' };
+								}
+								return items;
+							},
+						],
+					},
+				},
+			},
 		],
 		default: 'getAll',
 	},
