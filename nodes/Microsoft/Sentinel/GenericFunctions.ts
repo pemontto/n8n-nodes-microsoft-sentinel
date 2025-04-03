@@ -8,93 +8,191 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 
-function _addFilter(property: string, operator: string, values: string[]) {
-	let newFilter = `(${property} ${operator} '`;
-	newFilter += values.join(`' or ${property} ${operator} '`);
-	newFilter += "')";
-	return newFilter;
+/**
+ * Logs the request options if debugging is enabled.
+ * @param this - The execution context containing node parameters and logger.
+ * @param requestOptions - The HTTP request options.
+ * @returns The unchanged request options.
+ */
+export async function debugRequest(
+	this: IExecuteSingleFunctions,
+	requestOptions: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
+	const nodeDebug = this.getNodeParameter('nodeDebug', 0) as boolean;
+	if (nodeDebug) {
+		this.logger.info(
+			`[${this.getNode().type} | ${this.getNode().name}] REQUEST - ${JSON.stringify(requestOptions, null, 2)}`
+		);
+	}
+	return requestOptions;
 }
 
+/**
+ * Logs the response if debugging is enabled.
+ * @param this - The execution context containing node parameters and logger.
+ * @param items - The node execution data items.
+ * @param response - The full HTTP response.
+ * @returns The unchanged node execution data items.
+ */
+export async function debugResponse(
+	this: IExecuteSingleFunctions,
+	items: INodeExecutionData[],
+	response: IN8nHttpFullResponse,
+) {
+	const nodeDebug = this.getNodeParameter('nodeDebug', 0) as boolean;
+	if (nodeDebug) {
+		this.logger.info(
+			`[${this.getNode().type} | ${this.getNode().name}] RESPONSE - ${JSON.stringify(response, null, 2)}`
+		);
+	}
+	return items;
+}
+
+/**
+ * Builds an OData filter clause for a given property and operator.
+ * @param property - The property to filter.
+ * @param operator - The operator to use (e.g., 'eq').
+ * @param values - The array of values for the filter.
+ * @returns The constructed filter clause.
+ */
+function buildODataFilterClause(property: string, operator: string, values: string[]): string {
+	const joinedValues = values.join(`' or ${property} ${operator} '`);
+	return `(${property} ${operator} '${joinedValues}')`;
+}
+
+/**
+ * Builds the OData filter string based on provided filter parameters.
+ * @param this - The execution context containing node parameters and logger.
+ * @param requestOptions - The HTTP request options to modify.
+ * @returns The modified request options with the OData filter applied.
+ */
 export async function buildFilterString(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
 	const nodeDebug = this.getNodeParameter('nodeDebug', 0) as boolean;
-	const queryFilter = [];
+	const filterClauses: string[] = [];
 	const filters = this.getNodeParameter('filters', {}) as IDataObject;
+
+	// Check for date-based filters
 	if (filters.createdAfter) {
-		queryFilter.push(`properties/createdTimeUtc ge ${filters.createdAfter as string}`);
+		filterClauses.push(`properties/createdTimeUtc ge ${filters.createdAfter as string}`);
 	}
 	if (filters.modifiedAfter) {
-		queryFilter.push(`properties/lastModifiedTimeUtc ge ${filters.modifiedAfter as string}`);
+		filterClauses.push(`properties/lastModifiedTimeUtc ge ${filters.modifiedAfter as string}`);
 	}
+
+	// Filter by incident ID
 	if (filters.incidentId) {
-		queryFilter.push(`properties/incidentNumber eq ${filters.incidentId as string}`);
+		filterClauses.push(`properties/incidentNumber eq ${filters.incidentId as string}`);
 	}
+
+	// Filter by title with proper sanitization
 	if (filters.title) {
-		queryFilter.push(`contains(toLower(properties/title), '${(filters.title as string).replace(/'/g, '%27')}')`);
+		const sanitizedTitle = (filters.title as string).replace(/'/g, '%27');
+		filterClauses.push(`contains(toLower(properties/title), '${sanitizedTitle}')`);
 	}
-	// @ts-ignore
-	if (filters.severity?.length) {
-		// If filters.severity is a string, split it on commas
-		if (typeof filters.severity === 'string') {
-			filters.severity = filters.severity.split(/, */);
-		}
-		queryFilter.push(_addFilter('properties/severity', 'eq', filters.severity as string[]));
+
+	// Process array-based filters for severity
+	if (filters.severity && (filters.severity as string[] | string).length) {
+		const severityValues = typeof filters.severity === 'string'
+			? filters.severity.split(/, */)
+			: (filters.severity as string[]);
+		filterClauses.push(buildODataFilterClause('properties/severity', 'eq', severityValues));
 	}
-	// @ts-ignore
-	if (filters.status?.length) {
-		queryFilter.push(_addFilter('properties/status', 'eq', filters.status as string[]));
+
+	// Process array-based filters for status
+	if (filters.status && (filters.status as string[] | string).length) {
+		const statusValues = typeof filters.status === 'string'
+			? filters.status.split(/, */)
+			: (filters.status as string[]);
+		filterClauses.push(buildODataFilterClause('properties/status', 'eq', statusValues));
 	}
+
+	// Additional raw filter clause, if provided
 	if (filters.filter) {
-		// if (queryFilter.length) {
-		// 	queryFilter.push(' and ');
-		// }
-		queryFilter.push(`(${filters.filter as string})`);
+		filterClauses.push(`(${filters.filter as string})`);
 	}
-	if (queryFilter.length) {
-		// @ts-ignore
-		requestOptions.qs.$filter = queryFilter.join(' and ');
+
+	// If there are any filter clauses, attach them to the query string.
+	if (filterClauses.length) {
+		requestOptions.qs = {
+			...requestOptions.qs,
+			$filter: filterClauses.join(' and '),
+		};
 		if (nodeDebug) {
 			this.logger.info(
-				`[${this.getNode().type} | ${this.getNode().name}] - OData $filter: ${queryFilter.join(
-					' and ',
-				)}`,
+				`[${this.getNode().type} | ${this.getNode().name}] - OData $filter: ${filterClauses.join(' and ')}`
 			);
 		}
 	}
 
-	// console.log('\n\n\nrequestOptions:', requestOptions);
 	return requestOptions;
 }
 
+/**
+ * Applies common transformations to the request options.
+ * Chains the addUUID and mergeProperties functions.
+ * @param context - The execution context.
+ * @param requestOptions - The HTTP request options to transform.
+ * @returns The transformed request options.
+ */
+async function applyTransformations(
+	context: IExecuteSingleFunctions,
+	requestOptions: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
+	requestOptions = await addUUID.call(context, requestOptions);
+	requestOptions = await mergeProperties.call(context, requestOptions);
+	return requestOptions;
+}
+
+/**
+ * Adds a unique identifier to the request URL.
+ * @param this - The execution context containing node parameters.
+ * @param requestOptions - The HTTP request options to modify.
+ * @returns The modified request options with the objectId appended.
+ */
 export async function addUUID(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
-	const objectId = this.getNodeParameter('options.objectId', uuid()) as boolean;
+	const objectId = this.getNodeParameter('options.objectId', uuid()) as string;
+	// Append the objectId (or a new UUID if objectId is falsy) to the URL.
 	requestOptions.url = `${requestOptions.url}/${objectId || uuid()}`;
 	return requestOptions;
 }
 
+/**
+ * Merges custom properties into the request body.
+ * @param this - The execution context containing node parameters.
+ * @param requestOptions - The HTTP request options to modify.
+ * @returns The modified request options with merged properties.
+ */
 export async function mergeProperties(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
 	const customProperties = this.getNodeParameter('options.customProperties', {}) as IDataObject;
-	// Merge incidentProperties into requestOptions.url.body.properties
-	// create the body and properties objects if they don't exist
-	// @ts-ignore
-	requestOptions.body.properties = requestOptions.body.properties || {};
-	// @ts-ignore
+	// Ensure the body and its properties object exist before merging.
+	if (!requestOptions.body) {
+		requestOptions.body = {};
+	}
+	if (!requestOptions.body.properties) {
+		requestOptions.body.properties = {};
+	}
 	requestOptions.body.properties = {
-		...(customProperties || {}),
-		// @ts-ignore
+		...customProperties,
 		...requestOptions.body.properties,
 	};
 	return requestOptions;
 }
 
+/**
+ * Upserts an alert rule by preparing the request body and applying common transformations.
+ * @param this - The execution context.
+ * @param requestOptions - The HTTP request options to modify.
+ * @returns The modified request options ready for the upsert operation.
+ */
 export async function upsertAlertRule(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
@@ -109,25 +207,23 @@ export async function upsertAlertRule(
 			query: this.getNodeParameter('query') as string,
 			queryFrequency: this.getNodeParameter('queryFrequency', null) as string,
 			queryPeriod: this.getNodeParameter('queryPeriod', null) as string,
-			suppressionDuration: this.getNodeParameter(
-				'additionalFields.suppressionDuration',
-				'PT5H',
-			) as string,
-			suppressionEnabled: this.getNodeParameter(
-				'additionalFields.suppressionEnabled',
-				false,
-			) as boolean,
+			suppressionDuration: this.getNodeParameter('additionalFields.suppressionDuration', 'PT5H') as string,
+			suppressionEnabled: this.getNodeParameter('additionalFields.suppressionEnabled', false) as boolean,
 			triggerOperator: this.getNodeParameter('triggerOperator', null) as string,
 			triggerThreshold: this.getNodeParameter('triggerThreshold', null) as number,
 			...((this.getNodeParameter('additionalFields') ?? {}) as JsonObject),
 		},
 	};
-	requestOptions = await addUUID.call(this, requestOptions);
-	requestOptions = await mergeProperties.call(this, requestOptions);
 
-	return requestOptions;
+	return applyTransformations(this, requestOptions);
 }
 
+/**
+ * Upserts an incident by preparing the request body and applying common transformations.
+ * @param this - The execution context.
+ * @param requestOptions - The HTTP request options to modify.
+ * @returns The modified request options ready for the upsert operation.
+ */
 export async function upsertIncident(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
@@ -141,60 +237,61 @@ export async function upsertIncident(
 			status: this.getNodeParameter('status') as string,
 		},
 	};
-	requestOptions = await addUUID.call(this, requestOptions);
-	requestOptions = await mergeProperties.call(this, requestOptions);
-
-	return requestOptions;
+	return applyTransformations(this, requestOptions);
 }
 
+/**
+ * Upserts an automation rule by applying common transformations.
+ * This function does not modify the request body.
+ * @param this - The execution context.
+ * @param requestOptions - The HTTP request options to transform.
+ * @returns The modified request options ready for the upsert operation.
+ */
 export async function upsertAutomationRule(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
-	requestOptions = await addUUID.call(this, requestOptions);
-	requestOptions = await mergeProperties.call(this, requestOptions);
-	return requestOptions;
+	return applyTransformations(this, requestOptions);
 }
 
-export async function debugRequest(
+/**
+ * Upserts a comment by preparing the request body and applying common transformations.
+ * @param this - The execution context.
+ * @param requestOptions - The HTTP request options to modify.
+ * @returns The modified request options ready for the upsert operation.
+ */
+export async function upsertComment(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
-	const nodeDebug = this.getNodeParameter('nodeDebug', 0) as boolean;
-	if (nodeDebug) {
-		this.logger.info(
-			`[${this.getNode().type} | ${this.getNode().name}] REQUEST - ${JSON.stringify(requestOptions, null, 2)}`,
-		);
-	}
-	return requestOptions;
+	requestOptions.body = {
+		etag: this.getNodeParameter('options.etag', null) as string,
+		properties: {
+			message: this.getNodeParameter('message') as string,
+		},
+	};
+	return applyTransformations(this, requestOptions);
 }
 
-export async function debugResponse(
-	this: IExecuteSingleFunctions,
-	items: INodeExecutionData[],
-	response: IN8nHttpFullResponse,
-) {
-	const nodeDebug = this.getNodeParameter('nodeDebug', 0) as boolean;
-	if (nodeDebug) {
-		this.logger.info(
-			`[${this.getNode().type} | ${this.getNode().name}] RESPONSE - ${JSON.stringify(response, null, 2)}`,
-		);
-	}
-	return items;
-}
-
+/**
+ * Processes the query results by mapping rows to JSON objects.
+ * @param this - The execution context.
+ * @param items - The node execution data items (will be replaced).
+ * @param response - The full HTTP response from the query.
+ * @returns An array of node execution data with parsed results.
+ */
 export async function processQueryResults(
 	this: IExecuteSingleFunctions,
 	items: INodeExecutionData[],
 	response: IN8nHttpFullResponse,
 ): Promise<INodeExecutionData[]> {
 	items = [];
-
-	// @ts-ignore
+	// Access the first table in the response
 	const results: JsonObject = response.body.Tables[0];
 	const columns = results.Columns as JsonObject[];
 	const rows = results.Rows as [];
 
+	// Map each row to an object using column definitions
 	rows.forEach((row) => {
 		const rowData: JsonObject = {};
 		columns.forEach((column: any, index: number) => {
@@ -209,20 +306,30 @@ export async function processQueryResults(
 	return items;
 }
 
-export async function prepareOutput(this: IExecuteSingleFunctions, items: INodeExecutionData[], response: IN8nHttpFullResponse): Promise<INodeExecutionData[]> {
-	// console.log('item:', items);
+/**
+ * Prepares the output items based on node parameters.
+ * Formats the items either as individual items or grouped under a single key.
+ * @param this - The execution context.
+ * @param items - The node execution data items.
+ * @param response - The full HTTP response (unused here but kept for potential future use).
+ * @returns An array of node execution data with formatted output.
+ */
+export async function prepareOutput(
+	this: IExecuteSingleFunctions,
+	items: INodeExecutionData[],
+	response: IN8nHttpFullResponse,
+): Promise<INodeExecutionData[]> {
 	const nodeDebug = this.getNodeParameter('nodeDebug', 0) as boolean;
 	const simple = this.getNodeParameter('options.simple', true) as boolean;
 	const splitResults = this.getNodeParameter('options.splitResults', true) as boolean;
 
 	if (nodeDebug) {
 		this.logger.info(
-			`[${this.getNode().type} | ${this.getNode().name}] - Parsing properties of ${
-				items.length
-			} items}`,
+			`[${this.getNode().type} | ${this.getNode().name}] - Parsing properties of ${items.length} items`
 		);
 	}
 
+	// Format each item based on the 'simple' flag
 	items = items.map((item) => {
 		item.pairedItem = this.getItemIndex();
 		if (simple) {
@@ -236,27 +343,30 @@ export async function prepareOutput(this: IExecuteSingleFunctions, items: INodeE
 		return item;
 	});
 
-	// If splitResults is true, return each item as a separate item
+	// Return items as separate entries or grouped under a single key
 	if (splitResults) {
 		return items;
 	} else {
 		let outKey = (this.getNodeParameter('operation', 'results') as string).toLowerCase();
-		// Remove prepended 'get' from outKey
+		// Remove prepended 'get' from outKey if present
 		if (outKey.startsWith('get')) {
 			outKey = outKey.slice(3);
 		}
 		return [
 			{
 				json: {
-					[outKey]: items.map((item) => item.json)
+					[outKey]: items.map((item) => item.json),
 				},
-				pairedItem: this.getItemIndex()
-			}
+				pairedItem: this.getItemIndex(),
+			},
 		];
 	}
 }
 
-// https://learn.microsoft.com/en-us/rest/api/azureresourcegraph/resourcegraph/resources/resources?view=rest-azureresourcegraph-resourcegraph
+/**
+ * The workspace query to retrieve Sentinel workspace information.
+ * @see https://learn.microsoft.com/en-us/rest/api/azureresourcegraph/resourcegraph/resources/resources?view=rest-azureresourcegraph-resourcegraph
+ */
 export const workspaceQuery = `
 resources
 | where type =~ 'microsoft.operationsmanagement/solutions'
@@ -270,7 +380,11 @@ resources
     on id
 | extend path =  strcat("/subscriptions/", subscriptionId, "/resourcegroups/", resourceGroup, "/providers/Microsoft.OperationalInsights/workspaces/", name, "/providers/Microsoft.SecurityInsights")
 | extend sentinelInstance =  strcat(subscriptionId, "/", resourceGroup, "/", name)
-| join kind=leftouter (ResourceContainers | where type =~ 'microsoft.resources/subscriptions' | project subscriptionId, subscriptionName = name) on subscriptionId
+| join kind=leftouter (
+    ResourceContainers
+    | where type =~ 'microsoft.resources/subscriptions'
+    | project subscriptionId, subscriptionName = name
+    ) on subscriptionId
 | project
     name,
     resourceGroup,
