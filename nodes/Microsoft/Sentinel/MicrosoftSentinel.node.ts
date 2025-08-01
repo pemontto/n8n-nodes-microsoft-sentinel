@@ -1,13 +1,8 @@
-import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
-
-import { NodeConnectionType } from 'n8n-workflow';
+import { INodeType, INodeTypeDescription, NodeConnectionType } from 'n8n-workflow';
 
 import { incidentFields, incidentOperations } from './descriptions/IncidentDescription';
 import { alertRuleFields, alertRuleOperations } from './descriptions/AlertRuleDescription';
-import {
-	automationRuleFields,
-	automationRuleOperations,
-} from './descriptions/AutomationDescription';
+import { automationRuleFields, automationRuleOperations } from './descriptions/AutomationDescription';
 import {
 	debugRequest,
 	debugResponse,
@@ -29,6 +24,7 @@ export class MicrosoftSentinel implements INodeType {
 		},
 		inputs: [NodeConnectionType.Main],
 		outputs: [NodeConnectionType.Main],
+		usableAsTool: true,
 		credentials: [
 			{
 				name: 'microsoftSentinelOAuth2Api',

@@ -446,6 +446,7 @@ const getAllFields: INodeProperties[] = [
 			},
 		},
 		default: {},
+		/* eslint-disable n8n-nodes-base/node-param-collection-type-unsorted-items */
 		options: [
 			{
 				displayName: 'Created After',
@@ -533,6 +534,7 @@ const getAllFields: INodeProperties[] = [
 				placeholder: "properties/labels/any(item: contains(toLower(item/labelName), 'benign'))",
 			},
 		],
+		/* eslint-enable n8n-nodes-base/node-param-collection-type-unsorted-items */
 	},
 ];
 
