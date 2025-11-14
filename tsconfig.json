@@ -4,11 +4,7 @@
 		"module": "commonjs",
 		"moduleResolution": "node",
 		"target": "es2019",
-		"lib": [
-			"es2019",
-			"es2020",
-			"es2022.error"
-		],
+		"lib": ["es2019", "es2020", "es2022.error"],
 		"removeComments": true,
 		"useUnknownInCatchVariables": false,
 		"forceConsistentCasingInFileNames": true,
@@ -23,12 +19,7 @@
 		"declaration": true,
 		"sourceMap": true,
 		"skipLibCheck": true,
-		"outDir": "./dist/",
+		"outDir": "./dist/"
 	},
-	"include": [
-		"credentials/**/*",
-		"nodes/**/*",
-		"nodes/**/*.json",
-		"package.json",
-	],
+	"include": ["credentials/**/*", "nodes/**/*", "nodes/**/*.json", "package.json"]
 }

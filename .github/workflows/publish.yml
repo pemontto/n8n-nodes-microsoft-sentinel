@@ -6,15 +6,22 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4.1.0
-      - uses: actions/setup-node@v3
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: '18.x'
-          registry-url: 'https://registry.npmjs.org'
-      - run: pnpm i
-      - run: pnpm run build
+          node-version: "22"
+
+      - name: Install dependencies
+        run: "pnpm install"
+
+      - name: Run lint
+        run: "pnpm run lint"
+
+      - name: Run build
+        run: "pnpm run build"
+
       - run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

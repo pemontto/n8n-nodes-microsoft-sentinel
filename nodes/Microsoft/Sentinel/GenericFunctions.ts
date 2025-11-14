@@ -312,13 +312,11 @@ export async function processQueryResults(
  * Formats the items either as individual items or grouped under a single key.
  * @param this - The execution context.
  * @param items - The node execution data items.
- * @param response - The full HTTP response (unused here but kept for potential future use).
  * @returns An array of node execution data with formatted output.
  */
 export async function prepareOutput(
 	this: IExecuteSingleFunctions,
 	items: INodeExecutionData[],
-	response: IN8nHttpFullResponse,
 ): Promise<INodeExecutionData[]> {
 	const nodeDebug = this.getNodeParameter('nodeDebug', 0) as boolean;
 	const simple = this.getNodeParameter('options.simple', true) as boolean;

@@ -94,13 +94,13 @@ export class MicrosoftSentinel implements INodeType {
 			   placeholder: 'e.g., https://portal.azure.com/.../subscriptions/...',
 			   extractValue: {
 			   	type: 'regex',
-				regex: `.*subscriptions(?:\/|%2F)(.*)`,
+				regex: '.*subscriptions(?:/|%2F)(.*)',
 			   },
 			   validation: [
 			   		{
 						type: 'regex',
 						properties: {
-							regex: `.*subscriptions(?:\/|%2F)(.*)`,
+							regex: '.*subscriptions(?:/|%2F)(.*)',
 							errorMessage: 'Invalid or unrecognized URL format. Ensure it contains .../subscriptions/{subId}/resourceGroups/{rg}/.../workspaces/{ws} or .../sentinel/{ws}.',
 						},
 					},
@@ -320,7 +320,6 @@ export class MicrosoftSentinel implements INodeType {
 			listSentinelInstances: async function (
 				this: ILoadOptionsFunctions,
 				filter?: string,
-				paginationToken?: string,
 			): Promise<INodeListSearchResult> {
 				let listQuery = workspaceQuery;
 				if (filter) {
@@ -339,7 +338,7 @@ export class MicrosoftSentinel implements INodeType {
 				});
 
 				if (responseData && responseData.data && Array.isArray(responseData.data)) {
-					let options: INodePropertyOptions[] = responseData.data.map((item: AzureWorkspaceResource) => ({
+					const options: INodePropertyOptions[] = responseData.data.map((item: AzureWorkspaceResource) => ({
 						name: `${item.name} (${item.subscriptionName} > ${item.resourceGroup})`,
 						value: item.path,
 						url: `https://portal.azure.com/#view/Microsoft_Azure_Security_Insights/MainMenuBlade/~/0/id/%2Fsubscriptions%2F${item.subscriptionId}%2Fresourcegroups%2F${item.resourceGroup}%2Fproviders%2Fmicrosoft.securityinsightsarg%2Fsentinel%2F${item.name}`
