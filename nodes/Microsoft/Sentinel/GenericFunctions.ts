@@ -62,6 +62,21 @@ function buildODataFilterClause(property: string, operator: string, values: stri
 }
 
 /**
+ * Normalizes a date string to ISO 8601 format with timezone information.
+ * Azure OData requires DateTimeOffset values in format 'yyyy-mm-ddThh:mm:ss(.s+)?(zzzzzz)?'
+ * @param dateString - The date string to normalize.
+ * @returns The normalized date string with timezone information.
+ */
+function normalizeDateForOData(dateString: string): string {
+	// If already has timezone info (ends with Z or has offset like +00:00), return as is
+	if (dateString.match(/Z$|[+-]\d{2}:\d{2}$/)) {
+		return dateString;
+	}
+	// Otherwise, assume UTC and append 'Z'
+	return `${dateString}Z`;
+}
+
+/**
  * Builds the OData filter string based on provided filter parameters.
  * @param this - The execution context containing node parameters and logger.
  * @param requestOptions - The HTTP request options to modify.
@@ -77,10 +92,12 @@ export async function buildFilterString(
 
 	// Check for date-based filters
 	if (filters.createdAfter) {
-		filterClauses.push(`properties/createdTimeUtc ge ${filters.createdAfter}`);
+		const createdAfter = normalizeDateForOData(filters.createdAfter);
+		filterClauses.push(`properties/createdTimeUtc ge ${createdAfter}`);
 	}
 	if (filters.modifiedAfter) {
-		filterClauses.push(`properties/lastModifiedTimeUtc ge ${filters.modifiedAfter}`);
+		const modifiedAfter = normalizeDateForOData(filters.modifiedAfter);
+		filterClauses.push(`properties/lastModifiedTimeUtc ge ${modifiedAfter}`);
 	}
 
 	// Filter by incident ID
