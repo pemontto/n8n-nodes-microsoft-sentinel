@@ -1,4 +1,4 @@
-import { INodeType, INodeTypeDescription, NodeConnectionType } from 'n8n-workflow';
+import { INodeType, INodeTypeDescription, NodeConnectionTypes, ILoadOptionsFunctions, INodePropertyOptions, INodeListSearchResult } from 'n8n-workflow';
 
 import { incidentFields, incidentOperations } from './descriptions/IncidentDescription';
 import { alertRuleFields, alertRuleOperations } from './descriptions/AlertRuleDescription';
@@ -9,6 +9,7 @@ import {
 	processQueryResults,
 	workspaceQuery,
 } from './GenericFunctions';
+import type { AzureWorkspaceResource } from './types';
 
 export class MicrosoftSentinel implements INodeType {
 	description: INodeTypeDescription = {
@@ -22,8 +23,8 @@ export class MicrosoftSentinel implements INodeType {
 		defaults: {
 			name: 'Sentinel',
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		usableAsTool: true,
 		credentials: [
 			{
@@ -32,72 +33,91 @@ export class MicrosoftSentinel implements INodeType {
 			},
 		],
 		requestDefaults: {
-			// ignoreHttpStatusErrors: true,
-			// skipSslCertificateValidation: true,
-			// returnFullResponse: true,
 			baseURL:
-				'=https://management.azure.com/subscriptions/{{ $parameter.sentinelInstance.split("/")[0] }}/resourceGroups/{{ $parameter.sentinelInstance.split("/")[1] }}/providers/Microsoft.OperationalInsights/workspaces/{{ $parameter.sentinelInstance.split("/")[2] }}/providers/Microsoft.SecurityInsights',
-
+				`=https://management.azure.com/subscriptions/{{
+					$parameter.sentinelInstance.match(/(?:%2F)?([0-9a-fA-F-]{36})/)[1]
+				}}/resourceGroups/{{
+					$parameter.sentinelInstance.match(
+						/resourceGroups(?:%2F|\\/)(.*?)(?:%2F|\\/)/i
+					)?.[1]
+					|| $parameter.sentinelInstance.split('/')[1]
+				}}/providers/Microsoft.OperationalInsights/workspaces/{{
+					$parameter.sentinelInstance.match(
+						/(?:%2F|\\/)(?:sentinel|workspaces)(?:%2F|\\/)(.*?)(?:%2F|\\/|$)/i
+					)?.[1]
+					|| $parameter.sentinelInstance.split('/')[2]
+				}}/providers/Microsoft.SecurityInsights`,
 			qs: {
-				'api-version': '2024-01-01-preview',
+				'api-version': '2025-07-01-preview',
 			},
 		},
 		properties: [
 			{
-				/* eslint-disable n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options */
-				displayName: 'Sentinel Instance',
-				name: 'sentinelInstance',
-				default: '',
-				type: 'options',
-				typeOptions: {
-					loadOptions: {
-						routing: {
-							request: {
-								method: 'POST',
-								baseURL: 'https://management.azure.com',
-								url: '/providers/Microsoft.ResourceGraph/resources',
-								qs: {
-									'api-version': '2022-10-01',
-								},
-								body: {
-									query: workspaceQuery,
-								},
-							},
-							output: {
-								postReceive: [
-									{
-										type: 'rootProperty',
-										properties: {
-											property: 'data',
-										},
-									},
-									{
-										type: 'setKeyValue',
-										properties: {
-											name: '={{ $responseItem.name }} ({{ $responseItem.subscriptionName }} > {{ $responseItem.resourceGroup }})',
-											value:
-												'={{ $responseItem.subscriptionId }}/{{ $responseItem.resourceGroup }}/{{ $responseItem.name }}',
-											// '=/subscriptions/{{ $responseItem.subscriptionId }}/resourceGroups/{{ $responseItem.resourceGroup }}/providers/Microsoft.OperationalInsights/workspaces/{{ $responseItem.name }}/providers/Microsoft.SecurityInsights',
-										},
-									},
-									{
-										type: 'sort',
-										properties: {
-											key: 'name',
-										},
-									},
-								],
-							},
+			 displayName: 'Sentinel Instance',
+			 name: 'sentinelInstance',
+			 type: 'resourceLocator',
+			 default: { mode: 'list', value: '' },
+			 description: 'The Sentinel instance to use. Select from the list, enter as {subscriptionId}/{resourceGroupName}/{workspaceName} (Path mode), or provide a valid Azure Portal/Management URL (URL mode).',
+			 displayOptions: {
+			  hide: {
+			   resource: ['instance'],
+			  },
+			 },
+			 modes: [
+			  // Mode 1: Path (subscriptionId/resourceGroup/workspaceName)
+			  {
+			   displayName: 'Path',
+			   name: 'path',
+			   type: 'string',
+			   hint: 'Format: {subscriptionId}/{resourceGroupName}/{workspaceName}',
+			   placeholder: 'subId/RG/Workspace',
+			   validation: [
+			   	{
+			   		type: 'regex',
+			   		properties: {
+			   			regex: '.*\\/?(?<subscriptionId>[0-9a-fA-F-]{36}).*\\/(?<resourceGroupName>[\\w.-]+).*\\/(?<workspaceName>[\\w.-]+)',
+			   			errorMessage: 'Invalid format. Expected: {subscriptionId}/{resourceGroupName}/{workspaceName}',
+			   		},
+			   	},
+			   ],
+			   extractValue: {
+			   	type: 'regex',
+			   	regex: '^\\/?(?<subscriptionId>[0-9a-fA-F-]{36})\\/(?<resourceGroupName>[\\w.-]+)\\/(?<workspaceName>[\\w.-]+)$',
+			   },
+			  },
+			  // Mode 2: URL
+			  {
+			   displayName: 'URL',
+			   name: 'url',
+			   type: 'string',
+			   hint: 'Enter an Azure Portal or Management API URL containing the Sentinel instance details.',
+			   placeholder: 'e.g., https://portal.azure.com/.../subscriptions/...',
+			   extractValue: {
+			   	type: 'regex',
+				regex: `.*subscriptions(?:\/|%2F)(.*)`,
+			   },
+			   validation: [
+			   		{
+						type: 'regex',
+						properties: {
+							regex: `.*subscriptions(?:\/|%2F)(.*)`,
+							errorMessage: 'Invalid or unrecognized URL format. Ensure it contains .../subscriptions/{subId}/resourceGroups/{rg}/.../workspaces/{ws} or .../sentinel/{ws}.',
 						},
 					},
-				},
-				displayOptions: {
-					hide: {
-						resource: ['instance'],
-					},
-				},
-				description:
-					'The Sentinel instance to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.\nFormat is `{subscriptionId}/{resourceGroupName}/{workspaceName}`.',
+			   ],
+			  },
+			  // Mode 3: List
+			  {
+			   displayName: 'List',
+			   name: 'list',
+			   type: 'list',
+			   typeOptions: {
+			     searchListMethod: 'listSentinelInstances',
+			     searchable: true, // Retain searchability
+			     searchFilterRequired: false,
+			   },
+			  },
+			 ],
 			},
 			{
 				displayName: 'Resource',
@@ -259,9 +279,21 @@ export class MicrosoftSentinel implements INodeType {
 					request: {
 						method: 'GET',
 						baseURL:
-							'=https://management.azure.com/subscriptions/{{ $parameter.sentinelInstance.split("/")[0] }}/resourceGroups/{{ $parameter.sentinelInstance.split("/")[1] }}/providers/Microsoft.OperationalInsights/workspaces/{{ $parameter.sentinelInstance.split("/")[2] }}/api/query',
-
+							`=https://management.azure.com/subscriptions/{{
+								$parameter.sentinelInstance.match(/(?:%2F)?([0-9a-fA-F-]{36})/)[1]
+							}}/resourceGroups/{{
+								$parameter.sentinelInstance.match(
+									/resourceGroups(?:%2F|\\/)(.*?)(?:%2F|\\/)/i
+								)?.[1]
+								|| $parameter.sentinelInstance.split('/')[1]
+							}}/providers/Microsoft.OperationalInsights/workspaces/{{
+								$parameter.sentinelInstance.match(
+									/(?:%2F|\\/)(?:sentinel|workspaces)(?:%2F|\\/)(.*?)(?:%2F|\\/|$)/i
+								)?.[1]
+								|| $parameter.sentinelInstance.split('/')[2]
+							}}/api/query`,
 						qs: {
+							// Requires specfic API version
 							'api-version': '2017-01-01-preview',
 							query: '={{ $value }}',
 						},
@@ -272,173 +304,6 @@ export class MicrosoftSentinel implements INodeType {
 				},
 			},
 
-			// {
-			// 	displayName: 'Sentinel Instance',
-			// 	name: 'sentinelInstance',
-			// 	type: 'resourceLocator',
-			// 	default: { mode: 'list', value: '' },
-			// 	description: 'The Sentinel instance to use',
-			// 	modes: [
-			// 		{
-			// 			displayName: 'IDs',
-			// 			name: 'workspacePath',
-			// 			type: 'string',
-			// 			hint: 'Enter the subscription ID, resource group name, and workspace name',
-			// 			validation: [
-			// 				{
-			// 					type: 'regex',
-			// 					properties: {
-			// 						regex:
-			// 							'^\\/?(?<subscriptionId>[0-9a-fA-F-]{36})\\/(?<resourceGroupName>[\\w_-]{1,64})\\/(?<workspaceName>[\\w_-]+)$',
-			// 						// '^\\/?subscriptions\\/(?<subscriptionId>[0-9a-fA-F-]{36})\\/resourcegroups\\/(?<resourceGroupName>\\w+)\\/providers\\/Microsoft\\.OperationalInsights\\/workspaces\\/(?<workspaceName>[w-]+)$',
-			// 						errorMessage:
-			// 							'You must provide a valid subscription GUID, resource group name, and workspace name',
-			// 					},
-			// 				},
-			// 			],
-			// 			placeholder: '{subscriptionId}/{resourceGroupName}/{workspaceName}',
-			// 			// How to use the ID in API call
-			// 			url: '=/subscriptions/{{ $value.split("/")[0] }}/resourceGroups/{{ $value.split("/")[1] }}/providers/Microsoft.OperationalInsights/workspaces/{{ $value.split("/")[2] }}/providers/Microsoft.SecurityInsights',
-			// 		},
-			// 		// {
-			// 		// 	displayName: 'URL',
-			// 		// 	name: 'url',
-			// 		// 	type: 'string',
-			// 		// 	hint: 'Enter a URL',
-			// 		// 	validation: [
-			// 		// 		{
-			// 		// 			type: 'regex',
-			// 		// 			properties: {
-			// 		// 				regex:
-			// 		// 					'.*(?:\\/|%2F)subscriptions(?:\\/|%2F)?(?<subscriptionId>[0-9a-fA-F-]{36})(?:\\/|%2F)resource[Gg]roups(?:\\/|%2F)(?<resourceGroupName>[\\w\\d_-]{1,64})(?:\\/|%2F)providers(?:\\/|%2F).*(?:\\/|%2F)(?:sentinel|workspaces)(?:\\/|%2F)(?<workspaceName>[\\w\\d_-]+)(?:\\/|%2F|$).*',
-			// 		// 				errorMessage: 'Invalid URL',
-			// 		// 			},
-			// 		// 		},
-			// 		// 	],
-			// 		// 	placeholder:
-			// 		// 		'https://portal.azure.com/#view/Microsoft_Azure_Security_Insights/MainMenuBlade/~/0/id/%2Fsubscriptions%2F{subscriptionId}%2Fresourcegroups%2F{resourceGroupName}%2Fproviders%2Fmicrosoft.securityinsightsarg%2Fsentinel%2F{workspaceName}',
-			// 		// 	// How to get the ID from the URL
-			// 		// 	extractValue: {
-			// 		// 		type: 'regex',
-			// 		// 		regex:
-			// 		// 			/.*(?:\/|%2F)subscriptions(?:\/|%2F)?(?<subscriptionId>[0-9a-fA-F-]{36})(?:\/|%2F)resource[Gg]roups(?:\/|%2F)(?<resourceGroupName>[\w\d_-]{1,64})(?:\/|%2F)providers(?:\/|%2F).*(?:\/|%2F)(?:sentinel|workspaces)(?:\/|%2F)(?<workspaceName>[\w\d_-]+)(?:\/|%2F|$).*/,
-			// 		// 	},
-			// 		// },
-			// 		{
-			// 			displayName: 'List',
-			// 			name: 'list',
-			// 			type: 'list',
-			// 			typeOptions: {
-			// 				// You must always provide a search method
-			// 				// Write this method within the methods object in your base file
-			// 				// The method must populate the list, and handle searching if searchable: true
-			// 				searchListMethod: 'listInstances',
-			// 				// If you want users to be able to search the list
-			// 				searchable: true,
-			// 				// Set to true if you want to force users to search
-			// 				// When true, users can't browse the list
-			// 				// Or false if users can browse a list
-			// 				searchFilterRequired: false,
-			// 			},
-			// 		},
-			// 	],
-			// },
-
-			// {
-			// 	/* eslint-disable n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options */
-			// 	displayName: 'Subscription ID',
-			// 	name: 'subscriptionId',
-			// 	// type: 'string',
-			// 	default: '',
-			// 	type: 'options',
-			// 	typeOptions: {
-			// 		loadOptions: {
-			// 			routing: {
-			// 				request: {
-			// 					method: 'POST',
-			// 					baseURL: 'https://management.azure.com',
-			// 					url: '/providers/Microsoft.ResourceGraph/resources',
-			// 					qs: {
-			// 						'api-version': '2022-10-01',
-			// 					},
-			// 					body: {
-			// 						query: `${workspaceQuery}
-			// 							| join kind=leftouter (ResourceContainers | where type =~ 'microsoft.resources/subscriptions' | project subscriptionId, subName = name) on subscriptionId
-			// 							| sort by (tolower(tostring(name))) asc`,
-			// 					},
-			// 				},
-			// 				output: {
-			// 					postReceive: [
-			// 						{
-			// 							type: 'rootProperty',
-			// 							properties: {
-			// 								property: 'data',
-			// 							},
-			// 						},
-			// 						{
-			// 							type: 'setKeyValue',
-			// 							properties: {
-			// 								name: '={{$responseItem.subName}} ({{$responseItem.subscriptionId}})',
-			// 								value: '={{$responseItem.subscriptionId}}',
-			// 							},
-			// 						},
-			// 						{
-			// 							type: 'sort',
-			// 							properties: {
-			// 								key: 'name',
-			// 								unique: true,
-			// 							},
-			// 						},
-			// 						// async function (
-			// 						// 	this: IExecuteSingleFunctions,
-			// 						// 	items: INodeExecutionData[],
-			// 						// 	response: IN8nHttpFullResponse,
-			// 						// ) {
-			// 						// 	console.log('response', response);
-			// 						// 	return items;
-			// 						// },
-			// 					],
-			// 				},
-			// 			},
-			// 		},
-			// 	},
-			// 	// typeOptions: {
-			// 	// 	loadOptionsMethod: 'getSubscriptions',
-			// 	// },
-			// 	placeholder: '00000000-0000-0000-0000-000000000000',
-			// 	description:
-			// 		'Subscription ID where the Sentinel workspace is located. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
-			// },
-			// {
-			// 	/* eslint-disable n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options */
-			// 	displayName: 'Resource Group Name',
-			// 	name: 'resourceGroupName',
-			// 	type: 'string',
-			// 	default: '',
-			// 	// typeOptions: {
-			// 	// 	loadOptionsMethod: 'getResourceGroups',
-			// 	// 	loadOptionsDependsOn: ['sentinelInstance.subscriptionId'],
-			// 	// },
-			// 	placeholder: 'sentinel-rg',
-			// 	description:
-			// 		'Resource group name where the Sentinel workspace is located. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
-			// },
-			// {
-			// 	displayName: 'Workspace Name',
-			// 	name: 'workspaceName',
-			// 	type: 'string',
-			// 	default: '',
-			// 	// typeOptions: {
-			// 	// 	loadOptionsMethod: 'getWorkspaceNames',
-			// 	// 	loadOptionsDependsOn: [
-			// 	// 		'sentinelInstance.subscriptionId',
-			// 	// 		'sentinelInstance.resourceGroupName',
-			// 	// 	],
-			// 	// },
-			// 	placeholder: 'sentinel',
-			// 	description:
-			// 		'Sentinel workspace name. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
-			// },
 			{
 				displayName: 'Debug',
 				name: 'nodeDebug',
@@ -448,5 +313,48 @@ export class MicrosoftSentinel implements INodeType {
 				noDataExpression: true,
 			},
 		],
+	};
+
+	methods = {
+		listSearch: {
+			listSentinelInstances: async function (
+				this: ILoadOptionsFunctions,
+				filter?: string,
+				paginationToken?: string,
+			): Promise<INodeListSearchResult> {
+				let listQuery = workspaceQuery;
+				if (filter) {
+					listQuery += `| where * contains '${filter.toLowerCase()}'`;
+				}
+				const responseData = await this.helpers.httpRequestWithAuthentication.call(this, 'microsoftSentinelOAuth2Api', {
+					method: 'POST',
+					baseURL: 'https://management.azure.com',
+					url: '/providers/Microsoft.ResourceGraph/resources',
+					qs: {
+						'api-version': '2022-10-01',
+					},
+					body: {
+						query: listQuery
+					},
+				});
+
+				if (responseData && responseData.data && Array.isArray(responseData.data)) {
+					let options: INodePropertyOptions[] = responseData.data.map((item: AzureWorkspaceResource) => ({
+						name: `${item.name} (${item.subscriptionName} > ${item.resourceGroup})`,
+						value: item.path,
+						url: `https://portal.azure.com/#view/Microsoft_Azure_Security_Insights/MainMenuBlade/~/0/id/%2Fsubscriptions%2F${item.subscriptionId}%2Fresourcegroups%2F${item.resourceGroup}%2Fproviders%2Fmicrosoft.securityinsightsarg%2Fsentinel%2F${item.name}`
+					}));
+
+					options.sort((a, b) => a.name.localeCompare(b.name));
+
+					return {
+						results: options,
+					};
+				}
+				return {
+					results: [],
+				};
+			},
+		},
 	};
 }

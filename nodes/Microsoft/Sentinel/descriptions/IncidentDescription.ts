@@ -310,7 +310,7 @@ const getAllFields: INodeProperties[] = [
 			},
 			request: {
 				qs: {
-					'api-version': '2023-09-01-preview',
+					// 'api-version': '2025-06-01',
 					$top: 1000,
 				},
 			},

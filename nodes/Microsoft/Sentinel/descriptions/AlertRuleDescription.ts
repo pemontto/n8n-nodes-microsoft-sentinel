@@ -70,8 +70,6 @@ export const alertRuleOperations: INodeProperties[] = [
 								items: INodeExecutionData[],
 								response: IN8nHttpFullResponse,
 							) {
-								// @ts-ignore
-								console.log('items', items);
 								for (const item of items) {
 									item.json = { _status: response.statusCode === 200 ? 'Deleted' : 'Not Found' };
 								}

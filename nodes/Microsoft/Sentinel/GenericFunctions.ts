@@ -1,12 +1,13 @@
 import { v4 as uuid } from 'uuid';
-import type {
-	IExecuteSingleFunctions,
-	IHttpRequestOptions,
-	INodeExecutionData,
-	IN8nHttpFullResponse,
-	IDataObject,
-	JsonObject,
+import {
+	type IExecuteSingleFunctions,
+	type IHttpRequestOptions,
+	type INodeExecutionData,
+	type IN8nHttpFullResponse,
+	type IDataObject,
+	type JsonObject,
 } from 'n8n-workflow';
+import type { KQLColumn, IncidentFilters } from './types';
 
 /**
  * Logs the request options if debugging is enabled.
@@ -72,46 +73,46 @@ export async function buildFilterString(
 ): Promise<IHttpRequestOptions> {
 	const nodeDebug = this.getNodeParameter('nodeDebug', 0) as boolean;
 	const filterClauses: string[] = [];
-	const filters = this.getNodeParameter('filters', {}) as IDataObject;
+	const filters = this.getNodeParameter('filters', {}) as IncidentFilters;
 
 	// Check for date-based filters
 	if (filters.createdAfter) {
-		filterClauses.push(`properties/createdTimeUtc ge ${filters.createdAfter as string}`);
+		filterClauses.push(`properties/createdTimeUtc ge ${filters.createdAfter}`);
 	}
 	if (filters.modifiedAfter) {
-		filterClauses.push(`properties/lastModifiedTimeUtc ge ${filters.modifiedAfter as string}`);
+		filterClauses.push(`properties/lastModifiedTimeUtc ge ${filters.modifiedAfter}`);
 	}
 
 	// Filter by incident ID
 	if (filters.incidentId) {
-		filterClauses.push(`properties/incidentNumber eq ${filters.incidentId as string}`);
+		filterClauses.push(`properties/incidentNumber eq ${filters.incidentId}`);
 	}
 
 	// Filter by title with proper sanitization
 	if (filters.title) {
-		const sanitizedTitle = (filters.title as string).replace(/'/g, '%27');
+		const sanitizedTitle = filters.title.replace(/'/g, '%27');
 		filterClauses.push(`contains(toLower(properties/title), '${sanitizedTitle}')`);
 	}
 
 	// Process array-based filters for severity
-	if (filters.severity && (filters.severity as string[] | string).length) {
+	if (filters.severity && filters.severity.length) {
 		const severityValues = typeof filters.severity === 'string'
 			? filters.severity.split(/, */)
-			: (filters.severity as string[]);
+			: filters.severity;
 		filterClauses.push(buildODataFilterClause('properties/severity', 'eq', severityValues));
 	}
 
 	// Process array-based filters for status
-	if (filters.status && (filters.status as string[] | string).length) {
+	if (filters.status && filters.status.length) {
 		const statusValues = typeof filters.status === 'string'
 			? filters.status.split(/, */)
-			: (filters.status as string[]);
+			: filters.status;
 		filterClauses.push(buildODataFilterClause('properties/status', 'eq', statusValues));
 	}
 
 	// Additional raw filter clause, if provided
 	if (filters.filter) {
-		filterClauses.push(`(${filters.filter as string})`);
+		filterClauses.push(`(${filters.filter})`);
 	}
 
 	// If there are any filter clauses, attach them to the query string.
@@ -288,13 +289,13 @@ export async function processQueryResults(
 	items = [];
 	// Access the first table in the response
 	const results: JsonObject = response.body.Tables[0];
-	const columns = results.Columns as JsonObject[];
+	const columns = results.Columns as unknown as KQLColumn[];
 	const rows = results.Rows as [];
 
 	// Map each row to an object using column definitions
 	rows.forEach((row) => {
 		const rowData: JsonObject = {};
-		columns.forEach((column: any, index: number) => {
+		columns.forEach((column, index: number) => {
 			rowData[column.ColumnName] = row[index];
 		});
 		items.push({

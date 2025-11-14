@@ -77,8 +77,6 @@ export const incidentOperations: INodeProperties[] = [
 								items: INodeExecutionData[],
 								response: IN8nHttpFullResponse,
 							) {
-								// @ts-ignore
-								console.log('items', items);
 								for (const item of items) {
 									item.json = { _status: response.statusCode === 200 ? 'Deleted' : 'Not Found' };
 								}
@@ -198,7 +196,7 @@ const getAllFields: INodeProperties[] = [
 			},
 			request: {
 				qs: {
-					'api-version': '2023-09-01-preview',
+					// 'api-version': '2023-09-01-preview',
 					$top: 1000,
 				},
 			},
