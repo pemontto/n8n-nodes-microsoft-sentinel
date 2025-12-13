@@ -164,3 +164,4 @@ Tested with n8n v1.50.2
 ## Resources
 
 * [n8n community nodes documentation](https://docs.n8n.io/integrations/community-nodes/)
+* [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/pemontto/n8n-nodes-microsoft-sentinel)
