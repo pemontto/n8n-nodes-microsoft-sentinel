@@ -1,6 +1,7 @@
 import { INodeType, INodeTypeDescription, NodeConnectionTypes, ILoadOptionsFunctions, INodePropertyOptions, INodeListSearchResult } from 'n8n-workflow';
 
 import { incidentFields, incidentOperations } from './descriptions/IncidentDescription';
+import { incidentCommentFields, incidentCommentOperations } from './descriptions/IncidentCommentDescription';
 import { alertRuleFields, alertRuleOperations } from './descriptions/AlertRuleDescription';
 import { automationRuleFields, automationRuleOperations } from './descriptions/AutomationDescription';
 import {
@@ -17,7 +18,7 @@ export class MicrosoftSentinel implements INodeType {
 		name: 'microsoftSentinel',
 		icon: 'file:MicrosoftSentinel.svg',
 		group: ['transform'],
-		version: 1,
+		version: [1, 2, 3],
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume the Sentinel API',
 		defaults: {
@@ -174,6 +175,23 @@ export class MicrosoftSentinel implements INodeType {
 						},
 					},
 					{
+						name: 'Incident Comment',
+						value: 'incidentComment',
+						displayOptions: {
+							show: {
+								'@version': [3],
+							},
+						},
+						routing: {
+							send: {
+								preSend: [debugRequest],
+							},
+							output: {
+								postReceive: [debugResponse],
+							},
+						},
+					},
+					{
 						name: 'Query',
 						value: 'query',
 						routing: {
@@ -194,6 +212,9 @@ export class MicrosoftSentinel implements INodeType {
 
 			...incidentOperations,
 			...incidentFields,
+
+			...incidentCommentOperations,
+			...incidentCommentFields,
 
 			...automationRuleOperations,
 			...automationRuleFields,
