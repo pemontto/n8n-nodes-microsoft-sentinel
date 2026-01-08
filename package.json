@@ -1,11 +1,16 @@
 {
   "name": "n8n-nodes-microsoft-sentinel",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "n8n node for interacting with Microsoft Sentinel",
   "license": "MIT",
   "homepage": "",
-  "keywords": ["n8n-community-node-package"],
-  "author": { "name": "pemontto", "email": "pemontto@gmail.com" },
+  "keywords": [
+    "n8n-community-node-package"
+  ],
+  "author": {
+    "name": "pemontto",
+    "email": "pemontto@gmail.com"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/pemontto/n8n-nodes-microsoft-sentinel.git"
@@ -19,14 +24,18 @@
     "release": "n8n-node release",
     "prepublishOnly": "n8n-node prerelease"
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "n8n": {
     "n8nNodesApiVersion": 1,
     "strict": true,
     "credentials": [
       "dist/credentials/MicrosoftSentinelOAuth2Api.credentials.js"
     ],
-    "nodes": ["dist/nodes/Microsoft/Sentinel/MicrosoftSentinel.node.js"]
+    "nodes": [
+      "dist/nodes/Microsoft/Sentinel/MicrosoftSentinel.node.js"
+    ]
   },
   "devDependencies": {
     "@n8n/node-cli": "*",
@@ -36,6 +45,8 @@
     "release-it": "^19.0.6",
     "typescript": "5.9.3"
   },
-  "peerDependencies": { "n8n-workflow": "*" },
+  "peerDependencies": {
+    "n8n-workflow": "*"
+  },
   "packageManager": "pnpm@10.22.0"
 }
