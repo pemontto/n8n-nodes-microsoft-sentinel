@@ -143,16 +143,27 @@ _Copy and paste the following workflow JSON into your n8n editor to recreate the
 - **Get Many:** Retrieves multiple automation rules
 
 **Incident:**
-- **Create or Update:** Creates a new incident if it does not exist, or updates an existing incident
+- **Create** _(v2+)_: Creates a new incident
+- **Update** _(v2+)_: Updates an existing incident
+- **Create or Update** _(v1)_: Creates a new incident if it does not exist, or updates an existing incident
 - **Delete:** Deletes an incident
 - **Get:** Retrieves an incident
 - **Get Many:** Retrieves multiple incidents
 - **Get Alerts:** Retrieves alerts associated with an incident
 - **Get Entities:** Retrieves entities associated with an incident
-- **Create or Update Comment:** Creates a new comment if it does not exist, or updates an existing comment
-- **Delete Comment:** Deletes a comment associated with an incident
-- **Get Comment:** Retrieves a comment associated with an incident
-- **Get Many Comments:** Retrieves comments associated with an incident
+- **Add Label** _(v2+)_: Adds labels to an incident
+- **Remove Label** _(v2+)_: Removes labels from an incident
+- **Create or Update Comment** _(v1/v2)_: Creates or updates a comment (use Incident Comment resource in v3)
+- **Delete Comment** _(v1/v2)_: Deletes a comment (use Incident Comment resource in v3)
+- **Get Comment** _(v1/v2)_: Retrieves a comment (use Incident Comment resource in v3)
+- **Get Many Comments** _(v1/v2)_: Retrieves comments (use Incident Comment resource in v3)
+
+**Incident Comment** _(v3+)_:
+- **Create:** Creates a new comment on an incident
+- **Update:** Updates an existing comment
+- **Delete:** Deletes a comment
+- **Get:** Retrieves a comment
+- **Get Many:** Retrieves all comments for an incident
 
 **Query:**
 - **Run Query:** Runs a Kusto (KQL) query against a Sentinel workspace
@@ -160,6 +171,20 @@ _Copy and paste the following workflow JSON into your n8n editor to recreate the
 ## Compatibility
 
 Tested with n8n v1.50.2
+
+## Version History
+
+### v3 (Current)
+- **New "Incident Comment" resource** - Comment operations are now available as a separate resource for cleaner organization
+- Comment operations under Incident resource are hidden in v3 (still available in v1/v2 for backward compatibility)
+
+### v2
+- Split "Create or Update" incident operation into separate "Create" and "Update" operations
+- Added "Add Label" and "Remove Label" operations for incidents
+- Enhanced incident update with classification and owner fields
+
+### v1
+- Initial release with Instance, Alert Rule, Automation Rule, Incident, and Query resources
 
 ## Resources
 
