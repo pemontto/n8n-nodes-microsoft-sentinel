@@ -147,8 +147,8 @@ _Copy and paste the following workflow JSON into your n8n editor to recreate the
 - **Update** _(v2+)_: Updates an existing incident
 - **Create or Update** _(v1)_: Creates a new incident if it does not exist, or updates an existing incident
 - **Delete:** Deletes an incident
-- **Get:** Retrieves an incident
-- **Get Many:** Retrieves multiple incidents
+- **Get:** Retrieves an incident (with optional Include Alerts/Comments/Entities)
+- **Get Many:** Retrieves multiple incidents (with optional Include Alerts/Comments/Entities)
 - **Get Alerts:** Retrieves alerts associated with an incident
 - **Get Entities:** Retrieves entities associated with an incident
 - **Add Label** _(v2+)_: Adds labels to an incident
@@ -176,6 +176,7 @@ Tested with n8n v1.50.2
 
 ### v3 (Current)
 - **New "Incident Comment" resource** - Comment operations are now available as a separate resource for cleaner organization
+- **Include related data options** - Incident Get and Get Many now support optional "Include Alerts", "Include Comments", and "Include Entities" toggles to fetch related data in parallel
 - Comment operations under Incident resource are hidden in v3 (still available in v1/v2 for backward compatibility)
 
 ### v2
