@@ -30,6 +30,10 @@ import {
 	prepareOutput,
 	upsertComment,
 	upsertIncident,
+	createIncident,
+	updateIncident,
+	addLabelsToIncident,
+	removeLabelsFromIncident,
 } from '../GenericFunctions';
 
 export const incidentOperations: INodeProperties[] = [
@@ -48,6 +52,11 @@ export const incidentOperations: INodeProperties[] = [
 				name: 'Create or Update',
 				value: 'upsert',
 				action: 'Create or update an incident',
+				displayOptions: {
+					show: {
+						'@version': [1],
+					},
+				},
 				routing: {
 					request: {
 						method: 'PUT',
@@ -70,6 +79,106 @@ export const incidentOperations: INodeProperties[] = [
 								return items;
 							},
 						],
+					},
+				},
+			},
+			{
+				name: 'Create',
+				value: 'create',
+				action: 'Create an incident',
+				displayOptions: {
+					show: {
+						'@version': [2],
+					},
+				},
+				routing: {
+					request: {
+						method: 'PUT',
+						url: '/incidents',
+					},
+					send: {
+						preSend: [createIncident],
+					},
+					output: {
+						postReceive: [
+							prepareOutput,
+							async function (
+								this: IExecuteSingleFunctions,
+								items: INodeExecutionData[],
+								response: IN8nHttpFullResponse,
+							) {
+								for (const item of items) {
+									item.json._status = response.statusCode === 201 ? 'Created' : 'Updated';
+								}
+								return items;
+							},
+						],
+					},
+				},
+			},
+			{
+				name: 'Update',
+				value: 'update',
+				action: 'Update an incident',
+				displayOptions: {
+					show: {
+						'@version': [2],
+					},
+				},
+				routing: {
+					request: {
+						method: 'PUT',
+						url: '/incidents',
+					},
+					send: {
+						preSend: [updateIncident],
+					},
+					output: {
+						postReceive: [prepareOutput],
+					},
+				},
+			},
+			{
+				name: 'Add Label',
+				value: 'addLabel',
+				action: 'Add labels to an incident',
+				displayOptions: {
+					show: {
+						'@version': [2],
+					},
+				},
+				routing: {
+					request: {
+						method: 'PUT',
+						url: '/incidents',
+					},
+					send: {
+						preSend: [addLabelsToIncident],
+					},
+					output: {
+						postReceive: [prepareOutput],
+					},
+				},
+			},
+			{
+				name: 'Remove Label',
+				value: 'removeLabel',
+				action: 'Remove labels from an incident',
+				displayOptions: {
+					show: {
+						'@version': [2],
+					},
+				},
+				routing: {
+					request: {
+						method: 'PUT',
+						url: '/incidents',
+					},
+					send: {
+						preSend: [removeLabelsFromIncident],
+					},
+					output: {
+						postReceive: [prepareOutput],
 					},
 				},
 			},
@@ -196,6 +305,11 @@ export const incidentOperations: INodeProperties[] = [
 				name: 'Create or Update Comment',
 				value: 'upsertComment',
 				action: 'Create or update a comment on an incident',
+				displayOptions: {
+					show: {
+						'@version': [1, 2],
+					},
+				},
 				routing: {
 					request: {
 						method: 'PUT',
@@ -225,6 +339,11 @@ export const incidentOperations: INodeProperties[] = [
 				name: 'Delete Comment',
 				value: 'deleteComment',
 				action: 'Delete a comment on an incident',
+				displayOptions: {
+					show: {
+						'@version': [1, 2],
+					},
+				},
 				routing: {
 					request: {
 						method: 'DELETE',
@@ -250,6 +369,11 @@ export const incidentOperations: INodeProperties[] = [
 				name: 'Get Comment',
 				value: 'getComment',
 				action: 'Gets a comment on an incident',
+				displayOptions: {
+					show: {
+						'@version': [1, 2],
+					},
+				},
 				routing: {
 					request: {
 						method: 'GET',
@@ -264,6 +388,11 @@ export const incidentOperations: INodeProperties[] = [
 				name: 'Get Many Comments',
 				value: 'getComments',
 				action: 'Gets all comments for an incident',
+				displayOptions: {
+					show: {
+						'@version': [1, 2],
+					},
+				},
 				routing: {
 					request: {
 						method: 'GET',
@@ -539,6 +668,7 @@ const getAllFields: INodeProperties[] = [
 ];
 
 const getIncidentFields: INodeProperties[] = [
+	// Incident ID for non-comment operations (all versions)
 	{
 		displayName: 'Incident ID',
 		name: 'incidentId',
@@ -546,7 +676,24 @@ const getIncidentFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['incident'],
-				operation: ['get', 'getAlerts', 'getEntities', 'getComments', 'getComment'],
+				operation: ['get', 'getAlerts', 'getEntities'],
+			},
+		},
+		required: true,
+		default: '',
+		placeholder: '00000000-0000-0000-0000-000000000000',
+		description: 'The UUID of the incident',
+	},
+	// Incident ID for comment operations (v1/v2 only)
+	{
+		displayName: 'Incident ID',
+		name: 'incidentId',
+		type: 'string',
+		displayOptions: {
+			show: {
+				resource: ['incident'],
+				operation: ['getComments', 'getComment'],
+				'@version': [1, 2],
 			},
 		},
 		required: true,
@@ -562,6 +709,7 @@ const getIncidentFields: INodeProperties[] = [
 			show: {
 				resource: ['incident'],
 				operation: ['getComment'],
+				'@version': [1, 2],
 			},
 		},
 		required: true,
@@ -569,6 +717,7 @@ const getIncidentFields: INodeProperties[] = [
 		placeholder: '00000000-0000-0000-0000-000000000000',
 		description: 'The UUID of the comment',
 	},
+	// Options for non-comment operations (all versions)
 	{
 		displayName: 'Options',
 		name: 'options',
@@ -577,7 +726,7 @@ const getIncidentFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['incident'],
-				operation: ['get', 'getAlerts', 'getEntities', 'getComments', 'getComment'],
+				operation: ['get', 'getAlerts', 'getEntities'],
 			},
 		},
 		default: {},
@@ -598,7 +747,44 @@ const getIncidentFields: INodeProperties[] = [
 				default: false,
 				displayOptions: {
 					show: {
-						'/operation': ['getAlerts', 'getEntities', 'getComments'],
+						'/operation': ['getAlerts', 'getEntities'],
+					},
+				},
+				description: 'Whether to split the results into individual items',
+			}
+		],
+	},
+	// Options for comment operations (v1/v2 only)
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		displayOptions: {
+			show: {
+				resource: ['incident'],
+				operation: ['getComments', 'getComment'],
+				'@version': [1, 2],
+			},
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'Simplify',
+				name: 'simple',
+				type: 'boolean',
+				default: true,
+				description:
+					'Whether to return a simplified version of the response instead of the raw data',
+			},
+			{
+				displayName: 'Split Results',
+				name: 'splitResults',
+				type: 'boolean',
+				default: false,
+				displayOptions: {
+					show: {
+						'/operation': ['getComments'],
 					},
 				},
 				description: 'Whether to split the results into individual items',
@@ -608,6 +794,7 @@ const getIncidentFields: INodeProperties[] = [
 ];
 
 const deleteIncidentFields: INodeProperties[] = [
+	// Delete incident (all versions)
 	{
 		displayName: 'Incident ID',
 		name: 'incidentId',
@@ -615,7 +802,24 @@ const deleteIncidentFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['incident'],
-				operation: ['delete', 'deleteComment'],
+				operation: ['delete'],
+			},
+		},
+		required: true,
+		default: '',
+		placeholder: '00000000-0000-0000-0000-000000000000',
+		description: 'The UUID of the incident',
+	},
+	// Delete comment fields (v1/v2 only)
+	{
+		displayName: 'Incident ID',
+		name: 'incidentId',
+		type: 'string',
+		displayOptions: {
+			show: {
+				resource: ['incident'],
+				operation: ['deleteComment'],
+				'@version': [1, 2],
 			},
 		},
 		required: true,
@@ -631,6 +835,7 @@ const deleteIncidentFields: INodeProperties[] = [
 			show: {
 				resource: ['incident'],
 				operation: ['deleteComment'],
+				'@version': [1, 2],
 			},
 		},
 		required: true,
@@ -786,6 +991,7 @@ const upsertCommentFields: INodeProperties[] = [
 			show: {
 				resource: ['incident'],
 				operation: ['upsertComment'],
+				'@version': [1, 2],
 			},
 		},
 		required: true,
@@ -802,6 +1008,7 @@ const upsertCommentFields: INodeProperties[] = [
 			show: {
 				resource: ['incident'],
 				operation: ['upsertComment'],
+				'@version': [1, 2],
 			},
 		},
 		description: 'The comment message',
@@ -816,6 +1023,7 @@ const upsertCommentFields: INodeProperties[] = [
 			show: {
 				resource: ['incident'],
 				operation: ['upsertComment'],
+				'@version': [1, 2],
 			},
 		},
 		default: {},
@@ -845,7 +1053,486 @@ const upsertCommentFields: INodeProperties[] = [
 			},
 		],
 	},
-]
+];
+
+// V2 Create Incident Fields
+const createIncidentFields: INodeProperties[] = [
+	{
+		displayName: 'Title',
+		name: 'title',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: ['incident'],
+				operation: ['create'],
+				'@version': [2],
+			},
+		},
+		description: 'The title of the incident',
+		required: true,
+	},
+	{
+		displayName: 'Severity',
+		name: 'severity',
+		type: 'options',
+		default: 'High',
+		options: [
+			{ name: 'High', value: 'High' },
+			{ name: 'Medium', value: 'Medium' },
+			{ name: 'Low', value: 'Low' },
+			{ name: 'Informational', value: 'Informational' },
+		],
+		displayOptions: {
+			show: {
+				resource: ['incident'],
+				operation: ['create'],
+				'@version': [2],
+			},
+		},
+		description: 'The severity of the incident',
+		required: true,
+	},
+	{
+		displayName: 'Status',
+		name: 'status',
+		type: 'options',
+		default: 'New',
+		options: [
+			{ name: 'New', value: 'New' },
+			{ name: 'Active', value: 'Active' },
+			{ name: 'Closed', value: 'Closed' },
+		],
+		displayOptions: {
+			show: {
+				resource: ['incident'],
+				operation: ['create'],
+				'@version': [2],
+			},
+		},
+		description: 'The status of the incident',
+		required: true,
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		displayOptions: {
+			show: {
+				resource: ['incident'],
+				operation: ['create'],
+				'@version': [2],
+			},
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'Description',
+				name: 'description',
+				type: 'string',
+				default: '',
+				description: 'The description of the incident',
+			},
+			{
+				displayName: 'First Activity Time (UTC)',
+				name: 'firstActivityTimeUtc',
+				type: 'dateTime',
+				default: '',
+				description: 'The first activity time in UTC',
+			},
+			{
+				displayName: 'Label Mode',
+				name: 'labelMode',
+				type: 'options',
+				options: [
+					{ name: 'Add to Existing', value: 'add' },
+					{ name: 'Replace All', value: 'replace' },
+				],
+				default: 'add',
+				description: 'Whether to add labels to existing ones or replace all',
+			},
+			{
+				displayName: 'Labels',
+				name: 'labels',
+				type: 'string',
+				default: '',
+				description: 'Comma-separated labels or JSON array: "label1, label2" or ["label1", "label2"]',
+				placeholder: 'suspicious, malware',
+			},
+			{
+				displayName: 'Last Activity Time (UTC)',
+				name: 'lastActivityTimeUtc',
+				type: 'dateTime',
+				default: '',
+				description: 'The last activity time in UTC',
+			},
+			{
+				displayName: 'Owner',
+				name: 'owner',
+				type: 'string',
+				default: '',
+				description: 'The owner UPN/email address (e.g., user@domain.com)',
+				placeholder: 'user@domain.com',
+			},
+		],
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		displayOptions: {
+			show: {
+				resource: ['incident'],
+				operation: ['create'],
+				'@version': [2],
+			},
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'Incident ID',
+				name: 'objectId',
+				type: 'string',
+				default: '',
+				placeholder: '00000000-0000-0000-0000-000000000000',
+				description: 'The UUID of the incident (if not provided, a new UUID will be generated)',
+			},
+			{
+				displayName: 'Custom Properties',
+				name: 'customProperties',
+				type: 'json',
+				default: '',
+				description: 'Additional incident properties in JSON format. Merged with other fields.',
+			},
+			{
+				displayName: 'Simplify',
+				name: 'simple',
+				type: 'boolean',
+				default: true,
+				description: 'Whether to return a simplified version of the response instead of the raw data',
+			},
+		],
+	},
+];
+
+// V2 Update Incident Fields
+const updateIncidentFields: INodeProperties[] = [
+	{
+		displayName: 'Incident ID',
+		name: 'incidentId',
+		type: 'string',
+		default: '',
+		placeholder: '00000000-0000-0000-0000-000000000000',
+		displayOptions: {
+			show: {
+				resource: ['incident'],
+				operation: ['update'],
+				'@version': [2],
+			},
+		},
+		description: 'The UUID of the incident to update',
+		required: true,
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		displayOptions: {
+			show: {
+				resource: ['incident'],
+				operation: ['update'],
+				'@version': [2],
+			},
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'Classification',
+				name: 'classificationAndReason',
+				type: 'options',
+				displayOptions: {
+					hide: {
+						status: ['New', 'Active'],
+					},
+				},
+				default: 'Undetermined',
+				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
+				options: [
+					{ name: 'Undetermined', value: 'Undetermined' },
+					{ name: 'True Positive - Suspicious Activity', value: 'TruePositive:SuspiciousActivity' },
+					{ name: 'Benign Positive - Suspicious But Expected', value: 'BenignPositive:SuspiciousButExpected' },
+					{ name: 'False Positive - Incorrect Alert Logic', value: 'FalsePositive:IncorrectAlertLogic' },
+					{ name: 'False Positive - Inaccurate Data', value: 'FalsePositive:InaccurateData' },
+				],
+				description: 'The classification and reason for the incident (typically used when status is Closed)',
+			},
+			{
+				displayName: 'Classification Comment',
+				name: 'classificationComment',
+				type: 'string',
+				displayOptions: {
+					hide: {
+						status: ['New', 'Active'],
+					},
+				},
+				default: '',
+				description: 'Comment explaining the classification (typically used when status is Closed)',
+			},
+			{
+				displayName: 'Description',
+				name: 'description',
+				type: 'string',
+				default: '',
+				description: 'The description of the incident',
+			},
+			{
+				displayName: 'First Activity Time (UTC)',
+				name: 'firstActivityTimeUtc',
+				type: 'dateTime',
+				default: '',
+				description: 'The first activity time in UTC',
+			},
+			{
+				displayName: 'Label Mode',
+				name: 'labelMode',
+				type: 'options',
+				options: [
+					{ name: 'Add to Existing', value: 'add' },
+					{ name: 'Replace All', value: 'replace' },
+				],
+				default: 'add',
+				description: 'Whether to add labels to existing ones or replace all',
+			},
+			{
+				displayName: 'Labels',
+				name: 'labels',
+				type: 'string',
+				default: '',
+				description: 'Comma-separated labels or JSON array: "label1, label2" or ["label1", "label2"]',
+				placeholder: 'suspicious, malware',
+			},
+			{
+				displayName: 'Last Activity Time (UTC)',
+				name: 'lastActivityTimeUtc',
+				type: 'dateTime',
+				default: '',
+				description: 'The last activity time in UTC',
+			},
+			{
+				displayName: 'Owner',
+				name: 'owner',
+				type: 'string',
+				default: '',
+				description: 'The owner UPN/email address (e.g., user@domain.com)',
+				placeholder: 'user@domain.com',
+			},
+			{
+				displayName: 'Severity',
+				name: 'severity',
+				type: 'options',
+				default: 'High',
+				options: [
+					{ name: 'High', value: 'High' },
+					{ name: 'Medium', value: 'Medium' },
+					{ name: 'Low', value: 'Low' },
+					{ name: 'Informational', value: 'Informational' },
+				],
+				description: 'The severity of the incident',
+			},
+			{
+				displayName: 'Status',
+				name: 'status',
+				type: 'options',
+				default: 'New',
+				options: [
+					{ name: 'New', value: 'New' },
+					{ name: 'Active', value: 'Active' },
+					{ name: 'Closed', value: 'Closed' },
+				],
+				description: 'The status of the incident',
+			},
+			{
+				displayName: 'Title',
+				name: 'title',
+				type: 'string',
+				default: '',
+				description: 'The title of the incident',
+			},
+		],
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		displayOptions: {
+			show: {
+				resource: ['incident'],
+				operation: ['update'],
+				'@version': [2],
+			},
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'Force Update',
+				name: 'forceUpdate',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to bypass etag validation and force the update',
+			},
+			{
+				displayName: 'Custom Properties',
+				name: 'customProperties',
+				type: 'json',
+				default: '',
+				description: 'Additional incident properties in JSON format. Merged with other fields.',
+			},
+			{
+				displayName: 'Simplify',
+				name: 'simple',
+				type: 'boolean',
+				default: true,
+				description: 'Whether to return a simplified version of the response instead of the raw data',
+			},
+		],
+	},
+];
+
+// V2 Add Label Fields
+const addLabelFields: INodeProperties[] = [
+	{
+		displayName: 'Incident ID',
+		name: 'incidentId',
+		type: 'string',
+		default: '',
+		placeholder: '00000000-0000-0000-0000-000000000000',
+		displayOptions: {
+			show: {
+				resource: ['incident'],
+				operation: ['addLabel'],
+				'@version': [2],
+			},
+		},
+		description: 'The UUID of the incident',
+		required: true,
+	},
+	{
+		displayName: 'Labels',
+		name: 'labels',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: ['incident'],
+				operation: ['addLabel'],
+				'@version': [2],
+			},
+		},
+		description: 'Comma-separated labels or JSON array to add: "label1, label2" or ["label1", "label2"]',
+		placeholder: 'suspicious, malware',
+		required: true,
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		displayOptions: {
+			show: {
+				resource: ['incident'],
+				operation: ['addLabel'],
+				'@version': [2],
+			},
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'Force Update',
+				name: 'forceUpdate',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to bypass etag validation and force the update',
+			},
+			{
+				displayName: 'Simplify',
+				name: 'simple',
+				type: 'boolean',
+				default: true,
+				description: 'Whether to return a simplified version of the response instead of the raw data',
+			},
+		],
+	},
+];
+
+// V2 Remove Label Fields
+const removeLabelFields: INodeProperties[] = [
+	{
+		displayName: 'Incident ID',
+		name: 'incidentId',
+		type: 'string',
+		default: '',
+		placeholder: '00000000-0000-0000-0000-000000000000',
+		displayOptions: {
+			show: {
+				resource: ['incident'],
+				operation: ['removeLabel'],
+				'@version': [2],
+			},
+		},
+		description: 'The UUID of the incident',
+		required: true,
+	},
+	{
+		displayName: 'Labels',
+		name: 'labels',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: ['incident'],
+				operation: ['removeLabel'],
+				'@version': [2],
+			},
+		},
+		description: 'Comma-separated labels or JSON array to remove: "label1, label2" or ["label1", "label2"]',
+		placeholder: 'suspicious, malware',
+		required: true,
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		displayOptions: {
+			show: {
+				resource: ['incident'],
+				operation: ['removeLabel'],
+				'@version': [2],
+			},
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'Force Update',
+				name: 'forceUpdate',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to bypass etag validation and force the update',
+			},
+			{
+				displayName: 'Simplify',
+				name: 'simple',
+				type: 'boolean',
+				default: true,
+				description: 'Whether to return a simplified version of the response instead of the raw data',
+			},
+		],
+	},
+];
 
 
 export const incidentFields: INodeProperties[] = [
@@ -853,5 +1540,9 @@ export const incidentFields: INodeProperties[] = [
 	...getAllFields,
 	...deleteIncidentFields,
 	...upsertIncidentFields,
+	...createIncidentFields,
+	...updateIncidentFields,
+	...addLabelFields,
+	...removeLabelFields,
 	...upsertCommentFields,
 ];
