@@ -26,6 +26,7 @@ import type {
 import {
 	// addUUID,
 	buildFilterString,
+	includeRelatedData,
 	// mergeProperties,
 	prepareOutput,
 	upsertComment,
@@ -217,7 +218,7 @@ export const incidentOperations: INodeProperties[] = [
 						url: '=/incidents/{{ $parameter.incidentId }}',
 					},
 					output: {
-						postReceive: [prepareOutput],
+						postReceive: [prepareOutput, includeRelatedData],
 					},
 				},
 			},
@@ -242,6 +243,7 @@ export const incidentOperations: INodeProperties[] = [
 								},
 							},
 							prepareOutput,
+							includeRelatedData,
 						],
 					},
 					operations: {
@@ -490,6 +492,35 @@ const getAllFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
+				displayName: 'Include Alerts',
+				name: 'includeAlerts',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to fetch and include related alerts for each incident',
+			},
+			{
+				displayName: 'Include Comments',
+				name: 'includeComments',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to fetch and include comments for each incident',
+			},
+			{
+				displayName: 'Include Entities',
+				name: 'includeEntities',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to fetch and include related entities (IPs, hosts, accounts, etc.) for each incident',
+			},
+			{
+				displayName: 'Simplify',
+				name: 'simple',
+				type: 'boolean',
+				default: true,
+				description:
+					'Whether to return a simplified version of the response instead of the raw data',
+			},
+			{
 				displayName: 'Sort By',
 				name: 'orderBy',
 				type: 'options',
@@ -552,14 +583,6 @@ const getAllFields: INodeProperties[] = [
 				],
 				default: 'asc',
 				description: 'Sort the results in the ascending/descending order',
-			},
-			{
-				displayName: 'Simplify',
-				name: 'simple',
-				type: 'boolean',
-				default: true,
-				description:
-					'Whether to return a simplified version of the response instead of the raw data',
 			},
 		],
 	},
@@ -732,6 +755,42 @@ const getIncidentFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
+				displayName: 'Include Alerts',
+				name: 'includeAlerts',
+				type: 'boolean',
+				default: false,
+				displayOptions: {
+					show: {
+						'/operation': ['get'],
+					},
+				},
+				description: 'Whether to fetch and include related alerts for this incident',
+			},
+			{
+				displayName: 'Include Comments',
+				name: 'includeComments',
+				type: 'boolean',
+				default: false,
+				displayOptions: {
+					show: {
+						'/operation': ['get'],
+					},
+				},
+				description: 'Whether to fetch and include comments for this incident',
+			},
+			{
+				displayName: 'Include Entities',
+				name: 'includeEntities',
+				type: 'boolean',
+				default: false,
+				displayOptions: {
+					show: {
+						'/operation': ['get'],
+					},
+				},
+				description: 'Whether to fetch and include related entities (IPs, hosts, accounts, etc.) for this incident',
+			},
+			{
 				displayName: 'Simplify',
 				name: 'simple',
 				type: 'boolean',
@@ -751,7 +810,7 @@ const getIncidentFields: INodeProperties[] = [
 					},
 				},
 				description: 'Whether to split the results into individual items',
-			}
+			},
 		],
 	},
 	// Options for comment operations (v1/v2 only)
