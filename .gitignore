@@ -7,3 +7,10 @@ npm-debug.log*
 yarn.lock
 .vscode/launch.json
 package-lock.json
+
+# Claude Code
+.claude/
+.plans/
+
+# Symlinks to example projects
+example*
