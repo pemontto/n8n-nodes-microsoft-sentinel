@@ -1,3 +1,5 @@
+<img src="https://raw.githubusercontent.com/pemontto/n8n-nodes-microsoft-sentinel/main/nodes/Microsoft/Sentinel/MicrosoftSentinel.svg" width="120" alt="Microsoft Sentinel Logo" />
+
 # n8n-nodes-microsoft-sentinel
 
 This is an n8n community node. It lets you interact with Microsoft Sentinel workspaces and resources.
