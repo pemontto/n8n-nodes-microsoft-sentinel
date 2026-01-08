@@ -828,6 +828,267 @@ export async function removeLabelsFromIncident(
 }
 
 /**
+ * Concurrency limit for parallel requests when fetching related data.
+ */
+const INCIDENT_CONCURRENCY = 12;
+
+/**
+ * Builds the base URL for incident-related API calls.
+ * @param context - The execution context.
+ * @returns The base URL for incident API calls.
+ */
+function buildIncidentBaseUrl(context: IExecuteSingleFunctions): string {
+	const sentinelInstance = context.getNodeParameter('sentinelInstance') as IDataObject;
+	const instanceValue = sentinelInstance.value as string;
+
+	// Parse the instance value to extract subscription, resource group, and workspace
+	const subscriptionMatch = instanceValue.match(/(?:%2F)?([0-9a-fA-F-]{36})/);
+	const resourceGroupMatch = instanceValue.match(/resourceGroups(?:%2F|\/)(.*?)(?:%2F|\/)/i) ||
+		instanceValue.split('/')[1];
+	const workspaceMatch = instanceValue.match(/(?:%2F|\/)(?:sentinel|workspaces)(?:%2F|\/)(.*?)(?:%2F|\/|$)/i) ||
+		instanceValue.split('/')[2];
+
+	const subscriptionId = subscriptionMatch ? subscriptionMatch[1] : '';
+	const resourceGroup = typeof resourceGroupMatch === 'string' ? resourceGroupMatch : resourceGroupMatch[1];
+	const workspace = typeof workspaceMatch === 'string' ? workspaceMatch : workspaceMatch[1];
+
+	return `https://management.azure.com/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/Microsoft.OperationalInsights/workspaces/${workspace}/providers/Microsoft.SecurityInsights`;
+}
+
+/**
+ * Fetches alerts for an incident.
+ * @param context - The execution context.
+ * @param baseUrl - The base URL for API calls.
+ * @param incidentId - The incident ID.
+ * @param simple - Whether to simplify the response.
+ * @returns Array of alerts.
+ */
+async function fetchIncidentAlerts(
+	context: IExecuteSingleFunctions,
+	baseUrl: string,
+	incidentId: string,
+	simple: boolean,
+): Promise<IDataObject[]> {
+	const url = `${baseUrl}/incidents/${incidentId}/alerts`;
+
+	const response = await context.helpers.httpRequestWithAuthentication.call(
+		context,
+		'microsoftSentinelOAuth2Api',
+		{
+			method: 'POST',
+			url,
+			qs: { 'api-version': '2025-07-01-preview' },
+		},
+	);
+
+	const alerts = (response as IDataObject).value as IDataObject[] || [];
+
+	if (simple) {
+		return alerts.map((alert) => ({
+			id: alert.name,
+			kind: alert.kind,
+			...(alert.properties as IDataObject),
+		}));
+	}
+
+	return alerts;
+}
+
+/**
+ * Fetches entities for an incident.
+ * @param context - The execution context.
+ * @param baseUrl - The base URL for API calls.
+ * @param incidentId - The incident ID.
+ * @param simple - Whether to simplify the response.
+ * @returns Array of entities.
+ */
+async function fetchIncidentEntities(
+	context: IExecuteSingleFunctions,
+	baseUrl: string,
+	incidentId: string,
+	simple: boolean,
+): Promise<IDataObject[]> {
+	const url = `${baseUrl}/incidents/${incidentId}/entities`;
+
+	const response = await context.helpers.httpRequestWithAuthentication.call(
+		context,
+		'microsoftSentinelOAuth2Api',
+		{
+			method: 'POST',
+			url,
+			qs: { 'api-version': '2025-07-01-preview' },
+		},
+	);
+
+	const entities = (response as IDataObject).entities as IDataObject[] || [];
+
+	if (simple) {
+		return entities.map((entity) => ({
+			id: entity.name,
+			kind: entity.kind,
+			...(entity.properties as IDataObject),
+		}));
+	}
+
+	return entities;
+}
+
+/**
+ * Fetches comments for an incident (handles pagination).
+ * @param context - The execution context.
+ * @param baseUrl - The base URL for API calls.
+ * @param incidentId - The incident ID.
+ * @param simple - Whether to simplify the response.
+ * @returns Array of comments.
+ */
+async function fetchIncidentComments(
+	context: IExecuteSingleFunctions,
+	baseUrl: string,
+	incidentId: string,
+	simple: boolean,
+): Promise<IDataObject[]> {
+	const allComments: IDataObject[] = [];
+	let url: string | undefined = `${baseUrl}/incidents/${incidentId}/comments`;
+
+	while (url) {
+		const response = await context.helpers.httpRequestWithAuthentication.call(
+			context,
+			'microsoftSentinelOAuth2Api',
+			{
+				method: 'GET',
+				url,
+				qs: { 'api-version': '2025-07-01-preview', $top: 100 },
+			},
+		) as IDataObject;
+
+		const comments = response.value as IDataObject[] || [];
+		allComments.push(...comments);
+
+		// Handle pagination
+		url = response.nextLink as string | undefined;
+	}
+
+	if (simple) {
+		return allComments.map((comment) => ({
+			id: comment.name,
+			...(comment.properties as IDataObject),
+			etag: comment.etag,
+		}));
+	}
+
+	return allComments;
+}
+
+/**
+ * PostReceive function that fetches related data (alerts, entities, comments) for incidents.
+ * Uses parallel fetching with concurrency limit.
+ * @param this - The execution context.
+ * @param items - The incident items from the API response.
+ * @returns Items with related data merged in.
+ */
+export async function includeRelatedData(
+	this: IExecuteSingleFunctions,
+	items: INodeExecutionData[],
+): Promise<INodeExecutionData[]> {
+	const nodeDebug = this.getNodeParameter('nodeDebug', false) as boolean;
+	const includeAlerts = this.getNodeParameter('options.includeAlerts', false) as boolean;
+	const includeComments = this.getNodeParameter('options.includeComments', false) as boolean;
+	const includeEntities = this.getNodeParameter('options.includeEntities', false) as boolean;
+	const simple = this.getNodeParameter('options.simple', true) as boolean;
+
+	// If no include options are enabled, return items unchanged
+	if (!includeAlerts && !includeComments && !includeEntities) {
+		return items;
+	}
+
+	if (nodeDebug) {
+		this.logger.info(
+			`[includeRelatedData] Fetching related data for ${items.length} incidents. ` +
+			`Alerts: ${includeAlerts}, Comments: ${includeComments}, Entities: ${includeEntities}`
+		);
+	}
+
+	const baseUrl = buildIncidentBaseUrl(this);
+
+	// Process incidents in batches to respect concurrency limit
+	for (let i = 0; i < items.length; i += INCIDENT_CONCURRENCY) {
+		const batch = items.slice(i, i + INCIDENT_CONCURRENCY);
+
+		await Promise.all(batch.map(async (item) => {
+			// Get incident ID from the item
+			// When simple=true: prepareOutput sets 'id' to the incident UUID
+			// When simple=false: raw response has 'name' as UUID, 'id' as full resource path
+			const incidentId = simple
+				? (item.json.id as string)
+				: (item.json.name as string);
+
+			if (!incidentId) {
+				if (nodeDebug) {
+					this.logger.warn('[includeRelatedData] Could not determine incident ID for item');
+				}
+				return;
+			}
+
+			try {
+				// Fetch all enabled related data in parallel
+				const fetchPromises: Promise<void>[] = [];
+
+				if (includeAlerts) {
+					fetchPromises.push(
+						fetchIncidentAlerts(this, baseUrl, incidentId, simple)
+							.then((alerts) => { item.json.Alerts = alerts; })
+							.catch((error) => {
+								if (nodeDebug) {
+									this.logger.error(`[includeRelatedData] Failed to fetch alerts for ${incidentId}: ${error.message}`);
+								}
+								item.json.Alerts = [];
+							})
+					);
+				}
+
+				if (includeEntities) {
+					fetchPromises.push(
+						fetchIncidentEntities(this, baseUrl, incidentId, simple)
+							.then((entities) => { item.json.Entities = entities; })
+							.catch((error) => {
+								if (nodeDebug) {
+									this.logger.error(`[includeRelatedData] Failed to fetch entities for ${incidentId}: ${error.message}`);
+								}
+								item.json.Entities = [];
+							})
+					);
+				}
+
+				if (includeComments) {
+					fetchPromises.push(
+						fetchIncidentComments(this, baseUrl, incidentId, simple)
+							.then((comments) => { item.json.Comments = comments; })
+							.catch((error) => {
+								if (nodeDebug) {
+									this.logger.error(`[includeRelatedData] Failed to fetch comments for ${incidentId}: ${error.message}`);
+								}
+								item.json.Comments = [];
+							})
+					);
+				}
+
+				await Promise.all(fetchPromises);
+			} catch (error) {
+				if (nodeDebug) {
+					this.logger.error(`[includeRelatedData] Error processing incident ${incidentId}: ${error.message}`);
+				}
+			}
+		}));
+	}
+
+	if (nodeDebug) {
+		this.logger.info(`[includeRelatedData] Completed fetching related data for ${items.length} incidents`);
+	}
+
+	return items;
+}
+
+/**
  * The workspace query to retrieve Sentinel workspace information.
  * @see https://learn.microsoft.com/en-us/rest/api/azureresourcegraph/resourcegraph/resources/resources?view=rest-azureresourcegraph-resourcegraph
  */
