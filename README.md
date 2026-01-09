@@ -14,7 +14,9 @@ This is an n8n community node. It lets you interact with Microsoft Sentinel work
 
 ## Installation
 
-Follow the [installation guide](https://docs.n8n.io/integrations/community-nodes/installation/) in the n8n community nodes documentation.
+Install via **Settings > Community Nodes** in n8n and search for `n8n-nodes-microsoft-sentinel`.
+
+See the [n8n community nodes documentation](https://docs.n8n.io/integrations/community-nodes/installation/) for more details.
 
 ## Example Workflow
 
