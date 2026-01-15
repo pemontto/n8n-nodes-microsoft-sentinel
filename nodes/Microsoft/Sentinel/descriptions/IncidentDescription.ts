@@ -89,7 +89,7 @@ export const incidentOperations: INodeProperties[] = [
 				action: 'Create an incident',
 				displayOptions: {
 					show: {
-						'@version': [2],
+						'@version': [2, 3],
 					},
 				},
 				routing: {
@@ -123,7 +123,7 @@ export const incidentOperations: INodeProperties[] = [
 				action: 'Update an incident',
 				displayOptions: {
 					show: {
-						'@version': [2],
+						'@version': [2, 3],
 					},
 				},
 				routing: {
@@ -145,7 +145,7 @@ export const incidentOperations: INodeProperties[] = [
 				action: 'Add labels to an incident',
 				displayOptions: {
 					show: {
-						'@version': [2],
+						'@version': [2, 3],
 					},
 				},
 				routing: {
@@ -167,7 +167,7 @@ export const incidentOperations: INodeProperties[] = [
 				action: 'Remove labels from an incident',
 				displayOptions: {
 					show: {
-						'@version': [2],
+						'@version': [2, 3],
 					},
 				},
 				routing: {
@@ -1125,7 +1125,7 @@ const createIncidentFields: INodeProperties[] = [
 			show: {
 				resource: ['incident'],
 				operation: ['create'],
-				'@version': [2],
+				'@version': [2, 3],
 			},
 		},
 		description: 'The title of the incident',
@@ -1146,7 +1146,7 @@ const createIncidentFields: INodeProperties[] = [
 			show: {
 				resource: ['incident'],
 				operation: ['create'],
-				'@version': [2],
+				'@version': [2, 3],
 			},
 		},
 		description: 'The severity of the incident',
@@ -1166,7 +1166,7 @@ const createIncidentFields: INodeProperties[] = [
 			show: {
 				resource: ['incident'],
 				operation: ['create'],
-				'@version': [2],
+				'@version': [2, 3],
 			},
 		},
 		description: 'The status of the incident',
@@ -1181,7 +1181,7 @@ const createIncidentFields: INodeProperties[] = [
 			show: {
 				resource: ['incident'],
 				operation: ['create'],
-				'@version': [2],
+				'@version': [2, 3],
 			},
 		},
 		default: {},
@@ -1245,7 +1245,7 @@ const createIncidentFields: INodeProperties[] = [
 			show: {
 				resource: ['incident'],
 				operation: ['create'],
-				'@version': [2],
+				'@version': [2, 3],
 			},
 		},
 		default: {},
@@ -1288,7 +1288,7 @@ const updateIncidentFields: INodeProperties[] = [
 			show: {
 				resource: ['incident'],
 				operation: ['update'],
-				'@version': [2],
+				'@version': [2, 3],
 			},
 		},
 		description: 'The UUID of the incident to update',
@@ -1303,7 +1303,7 @@ const updateIncidentFields: INodeProperties[] = [
 			show: {
 				resource: ['incident'],
 				operation: ['update'],
-				'@version': [2],
+				'@version': [2, 3],
 			},
 		},
 		default: {},
@@ -1431,7 +1431,7 @@ const updateIncidentFields: INodeProperties[] = [
 			show: {
 				resource: ['incident'],
 				operation: ['update'],
-				'@version': [2],
+				'@version': [2, 3],
 			},
 		},
 		default: {},
@@ -1473,7 +1473,7 @@ const addLabelFields: INodeProperties[] = [
 			show: {
 				resource: ['incident'],
 				operation: ['addLabel'],
-				'@version': [2],
+				'@version': [2, 3],
 			},
 		},
 		description: 'The UUID of the incident',
@@ -1488,7 +1488,7 @@ const addLabelFields: INodeProperties[] = [
 			show: {
 				resource: ['incident'],
 				operation: ['addLabel'],
-				'@version': [2],
+				'@version': [2, 3],
 			},
 		},
 		description: 'Comma-separated labels or JSON array to add: "label1, label2" or ["label1", "label2"]',
@@ -1504,7 +1504,7 @@ const addLabelFields: INodeProperties[] = [
 			show: {
 				resource: ['incident'],
 				operation: ['addLabel'],
-				'@version': [2],
+				'@version': [2, 3],
 			},
 		},
 		default: {},
@@ -1539,7 +1539,7 @@ const removeLabelFields: INodeProperties[] = [
 			show: {
 				resource: ['incident'],
 				operation: ['removeLabel'],
-				'@version': [2],
+				'@version': [2, 3],
 			},
 		},
 		description: 'The UUID of the incident',
@@ -1554,7 +1554,7 @@ const removeLabelFields: INodeProperties[] = [
 			show: {
 				resource: ['incident'],
 				operation: ['removeLabel'],
-				'@version': [2],
+				'@version': [2, 3],
 			},
 		},
 		description: 'Comma-separated labels or JSON array to remove: "label1, label2" or ["label1", "label2"]',
@@ -1570,7 +1570,7 @@ const removeLabelFields: INodeProperties[] = [
 			show: {
 				resource: ['incident'],
 				operation: ['removeLabel'],
-				'@version': [2],
+				'@version': [2, 3],
 			},
 		},
 		default: {},
