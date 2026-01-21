@@ -519,29 +519,32 @@ function applyAdditionalFieldsToProperties(
 	}
 
 	// Handle classification fields - parse combined classificationAndReason field
-	if ('classificationAndReason' in additionalFields) {
-		const classificationValue = additionalFields.classificationAndReason as string;
-		if (classificationValue.includes(':')) {
-			const [classification, reason] = classificationValue.split(':');
-			properties.classification = classification;
-			properties.classificationReason = reason;
-		} else {
-			// Just classification without reason (e.g., 'Undetermined')
-			properties.classification = classificationValue;
+	// ONLY if the target status is 'Closed'
+	if (properties.status === 'Closed') {
+		if ('classificationAndReason' in additionalFields) {
+			const classificationValue = additionalFields.classificationAndReason as string;
+			if (classificationValue.includes(':')) {
+				const [classification, reason] = classificationValue.split(':');
+				properties.classification = classification;
+				properties.classificationReason = reason;
+			} else {
+				// Just classification without reason (e.g., 'Undetermined')
+				properties.classification = classificationValue;
+			}
+		} else if (isUpdate && currentProperties!.classification) {
+			// Preserve current classification and reason
+			properties.classification = currentProperties!.classification;
+			if (currentProperties!.classificationReason) {
+				properties.classificationReason = currentProperties!.classificationReason;
+			}
 		}
-	} else if (isUpdate && currentProperties!.classification) {
-		// Preserve current classification and reason
-		properties.classification = currentProperties!.classification;
-		if (currentProperties!.classificationReason) {
-			properties.classificationReason = currentProperties!.classificationReason;
-		}
-	}
 
-	// classificationComment is allowed for all classification values
-	if ('classificationComment' in additionalFields) {
-		properties.classificationComment = additionalFields.classificationComment;
-	} else if (isUpdate && currentProperties!.classificationComment) {
-		properties.classificationComment = currentProperties!.classificationComment;
+		// classificationComment is allowed for all classification values
+		if ('classificationComment' in additionalFields) {
+			properties.classificationComment = additionalFields.classificationComment;
+		} else if (isUpdate && currentProperties!.classificationComment) {
+			properties.classificationComment = currentProperties!.classificationComment;
+		}
 	}
 
 	// Date fields with normalization
