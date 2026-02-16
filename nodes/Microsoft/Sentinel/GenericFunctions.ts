@@ -110,6 +110,7 @@ export async function buildFilterString(
 
 	// Filter by title with proper sanitization
 	// Both the title and search term must be lowercased for case-insensitive matching
+	// Azure requires URL-encoded quotes (%27) rather than OData standard ('')
 	if (filters.title) {
 		const sanitizedTitle = filters.title.replace(/'/g, '%27').toLowerCase();
 		filterClauses.push(`contains(toLower(properties/title), '${sanitizedTitle}')`);
