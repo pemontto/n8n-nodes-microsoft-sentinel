@@ -1,2 +1,6 @@
 .DS_Store
 *.tsbuildinfo
+dist/example-versioned-node/**
+dist/examplenode/**
+dist/images/**
+dist/tsconfig.tsbuildinfo
